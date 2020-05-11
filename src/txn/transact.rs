@@ -35,12 +35,20 @@ use lazy_static::*;
 use std::any::Any;
 
 #[derive(Clone)]
+///
+/// Concurrency control for transaction system
 pub enum TransactionConcurrency {
+    ///
+    /// Optimistic Concurrency Control
     Optimistic,
+    ///
+    /// Pessimistic Concurrency Control
     Pessimistic,
 }
 
 #[derive(Clone)]
+///
+/// Transaction Isolation levels for transaction system
 pub enum TransactionIsolation {
     ///
     /// [TransactionIsolation::ReadCommitted] isolation level means that always a committed value will be
@@ -69,6 +77,8 @@ pub enum TransactionIsolation {
 }
 
 #[derive(Debug, Clone)]
+///
+/// State of the transaction which can be at any given time
 pub enum TransactionState {
     Active,
     Preparing,
@@ -88,6 +98,10 @@ impl Default for TransactionState {
     }
 }
 
+///
+/// Management struct for single transaction
+///
+/// This struct exposes various methods for controlling the transaction state throughout it's lifetime.
 #[derive(Clone)]
 pub struct Txn {
     /// Id of the transaction
@@ -361,6 +375,11 @@ lazy_static! {
 }
 
 // Management layer
+///
+/// Global level transaction management structure.
+///
+/// This struct manages transactions across the whole program.
+/// Manager's clock is always forward moving.
 pub struct TxnManager {
     pub(crate) txid: Arc<AtomicU64>,
 }
@@ -417,8 +436,8 @@ impl TxnManager {
     /// and number of participating entries.
     ///
     /// # Arguments
-    /// * `cc`
-    /// * `iso`
+    /// * `cc`: [Concurrency Control](TransactionConcurrency) setting
+    /// * `iso`: [Transaction Isolation](TransactionIsolation) setting
     /// * `timeout`: Timeout
     /// * `tx_size`: Number of entries participating in transaction (may be approximate).
     pub fn txn_build(

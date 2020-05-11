@@ -1,5 +1,6 @@
 use criterion::{criterion_group, criterion_main, BatchSize, Criterion};
-use lever::table::prelude::*;
+
+use lever::table::ltable::LTable;
 use lever::txn::prelude::*;
 use rand::prelude::*;
 use rand_distr::Pareto;

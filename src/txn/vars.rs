@@ -49,6 +49,8 @@ impl<T> TVar<T>
 where
     T: Clone + Any + Send + Sync,
 {
+    ///
+    /// Instantiates transactional variable for later use in a transaction.
     pub fn new(data: T) -> Self {
         TVar {
             data: Arc::new(data),
@@ -61,6 +63,12 @@ where
         }
     }
 
+    ///
+    /// New transactional variable with overridden timeout for overriding timeout for specific
+    /// transactional variable.
+    ///
+    /// Highly discouraged for the daily use unless you have various code paths that can
+    /// interfere over the variable that you instantiate.
     pub fn new_with_timeout(data: T, timeout: usize) -> Self {
         TVar {
             data: Arc::new(data),
@@ -73,14 +81,19 @@ where
         }
     }
 
-    pub fn set_stamp(&mut self, stamp: u64) {
+    pub(crate) fn set_stamp(&mut self, stamp: u64) {
         self.stamp = stamp;
     }
 
-    pub fn set_mod_rev(&mut self, modrev: u64) {
+    pub(crate) fn set_mod_rev(&mut self, modrev: u64) {
         self.modrev = modrev;
     }
 
+    ///
+    /// Get's the underlying data for the transactional variable.
+    ///
+    /// Beware that this will not give correct results any given point
+    /// in time during the course of execution of a transaction.
     pub fn get_data(&self) -> T {
         let val = self.data.clone();
 
@@ -90,7 +103,7 @@ where
             .clone()
     }
 
-    pub fn open_read(&self) -> T {
+    pub(crate) fn open_read(&self) -> T {
         let rs = ReadSet::local();
         let txn = Txn::get_local();
         let state: &TransactionState = &*txn.state.get();
@@ -144,13 +157,13 @@ where
 
     ///
     /// Convenience over deref mut writes
-    pub fn open_write_deref_mut(&mut self) -> T {
+    pub(crate) fn open_write_deref_mut(&mut self) -> T {
         self.open_write(self.get_data())
     }
 
     ///
     /// Explicit writes
-    pub fn open_write(&mut self, data: T) -> T {
+    pub(crate) fn open_write(&mut self, data: T) -> T {
         // dbg!("OPEN WRITE");
         let txn = Txn::get_local();
         let state: &TransactionState = &*txn.state.get();
@@ -206,7 +219,7 @@ where
         }
     }
 
-    pub fn validate(&self) -> bool {
+    pub(crate) fn validate(&self) -> bool {
         let txn = Txn::get_local();
         let state: &TransactionState = &*txn.state.get();
 
@@ -257,7 +270,7 @@ impl<T: 'static + Any + Clone + Send + Sync> DerefMut for TVar<T> {
 }
 
 /// A type that can allocate and deallocate far heap memory.
-pub trait Memory {
+pub(crate) trait Memory {
     /// Allocates memory.
     fn allocate<T>(&self, value: T) -> *mut T;
 
@@ -266,7 +279,7 @@ pub trait Memory {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub struct BoxMemory;
+pub(crate) struct BoxMemory;
 
 impl BoxMemory {
     pub(crate) fn reclaim<T>(&self, pointer: *const T) -> T {

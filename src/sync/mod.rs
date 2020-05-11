@@ -12,7 +12,7 @@ pub mod treiber;
 pub(crate) mod ttas;
 
 ///
-/// Prelude for the synchronization primitives exposed by Lever
+/// Prelude for the synchronization primitives
 pub mod prelude {
     pub use super::rerwlock::*;
     pub use super::treiber::*;

@@ -34,7 +34,7 @@ fn bench_lotable_pure_reads(c: &mut Criterion) {
     let key: String = "CORE".into();
     lotable.insert(key.clone(), 123_456);
 
-    let threads = 500;
+    let threads = 8;
 
     let mut group = c.benchmark_group("lotable_read_throughput");
     group.throughput(Throughput::Elements(threads as u64));
@@ -83,7 +83,7 @@ fn bench_lotable_rw_pareto(c: &mut Criterion) {
     let key: String = "CORE".into();
     lotable.insert(key.clone(), 123_456);
 
-    let threads = 500;
+    let threads = 8;
 
     let mut group = c.benchmark_group("lotable_rw_pareto_throughput");
     group.throughput(Throughput::Elements(threads as u64));
@@ -133,7 +133,7 @@ fn bench_lotable_pure_writes(c: &mut Criterion) {
     let key: String = "CORE".into();
     lotable.insert(key.clone(), 123_456);
 
-    let threads = 500;
+    let threads = 8;
 
     let mut group = c.benchmark_group("lotable_write_throughput");
     group.throughput(Throughput::Elements(threads as u64));
