@@ -1,0 +1,50 @@
+[package]
+name = "lever"
+version = "0.1.0"
+authors = ["Mahmut Bulut <vertexclique@gmail.com>"]
+edition = "2018"
+description = "Pillars for Transactional Systems and Data Grids"
+keywords = ["concurrency", "transactional", "database", "multitasking", "multithreading"]
+categories = ["concurrency", "asynchronous"]
+homepage = "https://github.com/vertexclique/lever"
+repository = "https://github.com/vertexclique/lever"
+documentation = "https://docs.rs/lever"
+readme = "README.md"
+license = "Apache-2.0/MIT"
+exclude = [
+    "scripts/*",
+	".github/*",
+	"examples/*",
+	"graphstore/*",
+	"tests/*",
+	"img/*",
+	"ci/*",
+	"benches/*",
+	"doc/*",
+	"*.png",
+	"*.dot",
+	"*.yml",
+	"*.toml",
+	"*.md"
+]
+
+
+[dependencies]
+log = "0.4"
+lazy_static = "1.4"
+crossbeam-epoch = "0.8.2"
+parking_lot = "0.10.2"
+anyhow = "1"
+
+[dev-dependencies]
+criterion = "0.3"
+rand = "0.7"
+rand_distr = "0.2"
+
+[[bench]]
+name = "op_ser_benches"
+harness = false
+
+[[bench]]
+name = "lotable_benches"
+harness = false
