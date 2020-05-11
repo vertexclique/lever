@@ -43,8 +43,10 @@ rand_distr = "0.2"
 
 [[bench]]
 name = "op_ser_benches"
+path = "benches/op_ser_benches.rs"
 harness = false
 
 [[bench]]
 name = "lotable_benches"
+path = "benches/lotable_benches.rs"
 harness = false
