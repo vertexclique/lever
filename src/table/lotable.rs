@@ -1,7 +1,7 @@
 use crate::sync::atomics::AtomicBox;
 use crate::txn::prelude::*;
 
-use std::collections::hash_map::{RandomState, Keys};
+use std::collections::hash_map::{Keys, RandomState};
 use std::collections::HashMap;
 
 use std::hash::Hash;
@@ -139,32 +139,34 @@ where
         // self.latch.shrink_to_fit();
     }
 
-    pub fn keys<'table>(&'table self)  -> impl Iterator<Item = K> + 'table {
-        self.latch
-            .iter()
-            .flat_map(move |b| {
-                self.txn.begin(|t| {
-                    let container = t.read(&b);
-                    container.get().0.keys()
-                        .into_iter()
-                        .map(Clone::clone)
-                        .collect::<Vec<K>>()
-                })
+    pub fn keys<'table>(&'table self) -> impl Iterator<Item = K> + 'table {
+        self.latch.iter().flat_map(move |b| {
+            self.txn.begin(|t| {
+                let container = t.read(&b);
+                container
+                    .get()
+                    .0
+                    .keys()
+                    .into_iter()
+                    .map(Clone::clone)
+                    .collect::<Vec<K>>()
             })
+        })
     }
 
     pub fn values<'table>(&'table self) -> impl Iterator<Item = V> + 'table {
-        self.latch
-            .iter()
-            .flat_map(move |b| {
-                self.txn.begin(|t| {
-                    let container = t.read(&b);
-                    container.get().0.values()
-                        .into_iter()
-                        .map(Clone::clone)
-                        .collect::<Vec<V>>()
-                })
+        self.latch.iter().flat_map(move |b| {
+            self.txn.begin(|t| {
+                let container = t.read(&b);
+                container
+                    .get()
+                    .0
+                    .values()
+                    .into_iter()
+                    .map(Clone::clone)
+                    .collect::<Vec<V>>()
             })
+        })
     }
 
     fn hash(&self, key: &K) -> usize {

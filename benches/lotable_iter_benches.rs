@@ -3,17 +3,15 @@ use lever::table::prelude::*;
 
 use rand::prelude::*;
 use rand_distr::Pareto;
-use std::sync::Arc;
 use rayon::prelude::*;
+use std::sync::Arc;
 
 const BATCH_SIZE: usize = 50;
 
 fn pure_read(lotable: Arc<LOTable<String, u64>>, key: String) {
-    (0..BATCH_SIZE)
-        .into_par_iter()
-        .for_each(|_| {
-            lotable.get(&key.clone());
-        });
+    (0..BATCH_SIZE).into_par_iter().for_each(|_| {
+        lotable.get(&key.clone());
+    });
 }
 
 fn bench_lotable_pure_reads(c: &mut Criterion) {
@@ -37,16 +35,14 @@ fn bench_lotable_pure_reads(c: &mut Criterion) {
 }
 
 fn rw_pareto(lotable: Arc<LOTable<String, u64>>, key: String, dist: f64) {
-    (0..BATCH_SIZE)
-        .into_par_iter()
-        .for_each(|_| {
-            if dist < 0.8_f64 {
-                lotable.get(&key.clone());
-            } else {
-                let data = lotable.get(&key).unwrap();
-                lotable.insert(key.clone(), data + 1);
-            }
-        });
+    (0..BATCH_SIZE).into_par_iter().for_each(|_| {
+        if dist < 0.8_f64 {
+            lotable.get(&key.clone());
+        } else {
+            let data = lotable.get(&key).unwrap();
+            lotable.insert(key.clone(), data + 1);
+        }
+    });
 }
 
 fn bench_lotable_rw_pareto(c: &mut Criterion) {
@@ -76,11 +72,9 @@ fn bench_lotable_rw_pareto(c: &mut Criterion) {
 ////////////////////////////////
 
 fn pure_writes(lotable: Arc<LOTable<String, u64>>, key: String) {
-    (0..BATCH_SIZE)
-        .into_par_iter()
-        .for_each(|i| {
-            lotable.insert(key.clone(), i as u64);
-        });
+    (0..BATCH_SIZE).into_par_iter().for_each(|i| {
+        lotable.insert(key.clone(), i as u64);
+    });
 }
 
 fn bench_lotable_pure_writes(c: &mut Criterion) {
