@@ -40,6 +40,7 @@ anyhow = "1"
 criterion = "0.3"
 rand = "0.7"
 rand_distr = "0.2"
+rayon = "1"
 
 [[bench]]
 name = "op_ser_benches"
@@ -47,6 +48,11 @@ path = "benches/op_ser_benches.rs"
 harness = false
 
 [[bench]]
-name = "lotable_benches"
-path = "benches/lotable_benches.rs"
+name = "lotable_iter_benches"
+path = "benches/lotable_iter_benches.rs"
+harness = false
+
+[[bench]]
+name = "lotable_threaded_join_benches"
+path = "benches/lotable_threaded_join_benches.rs"
 harness = false
