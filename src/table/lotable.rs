@@ -1,7 +1,7 @@
 use crate::sync::atomics::AtomicBox;
 use crate::txn::prelude::*;
 
-use std::collections::hash_map::RandomState;
+use std::collections::hash_map::{RandomState, Keys};
 use std::collections::HashMap;
 
 use std::hash::Hash;
@@ -92,6 +92,26 @@ where
     }
 
     #[inline]
+    pub fn remove(&self, k: &K) -> Option<Arc<Option<V>>> {
+        let tvar = self.seek_tvar(&k);
+
+        let previous = self.txn.begin(|t| {
+            let previous: Arc<AtomicBox<Option<V>>> = Arc::new(AtomicBox::new(None));
+            let container = t.read(&tvar);
+            container.replace_with(|r| {
+                let mut c = r.0.clone();
+                let p = c.remove(k);
+                previous.replace_with(|_| p.clone());
+                Container(c)
+            });
+
+            previous
+        });
+
+        previous.extract().ok()
+    }
+
+    #[inline]
     pub fn get(&self, k: &K) -> Option<V> {
         let tvar = self.seek_tvar(k);
 
@@ -103,10 +123,48 @@ where
     }
 
     #[inline]
+    pub fn contains_key(&self, k: &K) -> bool {
+        let tvar = self.seek_tvar(&k);
+
+        self.txn.begin(|t| {
+            let container = t.read(&tvar);
+            container.get().0.contains_key(k)
+        })
+    }
+
+    #[inline]
     pub fn clear(&mut self) {
         self.latch.clear();
         // TODO: Shrink to fit as a optimized table.
         // self.latch.shrink_to_fit();
+    }
+
+    pub fn keys<'table>(&'table self)  -> impl Iterator<Item = K> + 'table {
+        self.latch
+            .iter()
+            .flat_map(move |b| {
+                self.txn.begin(|t| {
+                    let container = t.read(&b);
+                    container.get().0.keys()
+                        .into_iter()
+                        .map(Clone::clone)
+                        .collect::<Vec<K>>()
+                })
+            })
+    }
+
+    pub fn values<'table>(&'table self) -> impl Iterator<Item = V> + 'table {
+        self.latch
+            .iter()
+            .flat_map(move |b| {
+                self.txn.begin(|t| {
+                    let container = t.read(&b);
+                    container.get().0.values()
+                        .into_iter()
+                        .map(Clone::clone)
+                        .collect::<Vec<V>>()
+                })
+            })
     }
 
     fn hash(&self, key: &K) -> usize {

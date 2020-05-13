@@ -36,7 +36,7 @@ fn bench_lotable_pure_reads(c: &mut Criterion) {
 
     let threads = 8;
 
-    let mut group = c.benchmark_group("lotable_read_throughput");
+    let mut group = c.benchmark_group("lotable_threaded_join_read_throughput");
     group.throughput(Throughput::Elements(threads as u64));
     group.bench_function("pure reads", move |b| {
         b.iter_batched(
@@ -85,7 +85,7 @@ fn bench_lotable_rw_pareto(c: &mut Criterion) {
 
     let threads = 8;
 
-    let mut group = c.benchmark_group("lotable_rw_pareto_throughput");
+    let mut group = c.benchmark_group("lotable_threaded_join_rw_pareto_throughput");
     group.throughput(Throughput::Elements(threads as u64));
     group.bench_function("rw_pareto", move |b| {
         b.iter_batched(
@@ -135,7 +135,7 @@ fn bench_lotable_pure_writes(c: &mut Criterion) {
 
     let threads = 8;
 
-    let mut group = c.benchmark_group("lotable_write_throughput");
+    let mut group = c.benchmark_group("lotable_threaded_join_write_throughput");
     group.throughput(Throughput::Elements(threads as u64));
     group.bench_function("pure writes", move |b| {
         b.iter_batched(
@@ -147,8 +147,8 @@ fn bench_lotable_pure_writes(c: &mut Criterion) {
 }
 
 criterion_group! {
-    name = lotable_benches;
+    name = lotable_threaded_join_benches;
     config = Criterion::default();
     targets = bench_lotable_pure_reads, bench_lotable_rw_pareto, bench_lotable_pure_writes
 }
-criterion_main!(lotable_benches);
+criterion_main!(lotable_threaded_join_benches);
