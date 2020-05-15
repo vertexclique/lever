@@ -8,7 +8,7 @@ use rand_distr::Pareto;
 fn pure_read(txn: Txn, tvar: TVar<LTable<String, String>>) -> LTable<String, String> {
     let res = txn.begin(|t: &mut Txn| t.read(&tvar));
 
-    res
+    res.unwrap()
 }
 
 fn bench_pure_reads(c: &mut Criterion) {

@@ -135,7 +135,7 @@ impl WriteSet {
         LWS.with(|lws| {
             let mut ws = lws.borrow_mut();
             *ws = self.0.clone();
-            ws.clear();
+            // ws.clear();
         })
     }
 }

@@ -11,6 +11,7 @@ use std::{
 };
 use thread::ThreadId;
 
+use super::errors::*;
 use super::readset::ReadSet;
 use super::utils;
 use crate::sync::ttas::TTas;
@@ -135,7 +136,7 @@ pub struct Txn {
 impl Txn {
     ///
     /// Initiate transaction with given closure.
-    pub fn begin<F, R>(&self, mut f: F) -> R
+    pub fn begin<F, R>(&self, mut f: F) -> TxnResult<R>
     where
         F: FnMut(&mut Txn) -> R,
         R: 'static + Any + Clone + Send + Sync,
@@ -162,7 +163,7 @@ impl Txn {
             me.on_abort::<R>();
         };
 
-        r
+        Ok(r)
     }
 
     ///
@@ -312,6 +313,7 @@ impl Txn {
         rs.clear();
     }
 
+    #[cold]
     pub(crate) fn on_abort<T: Clone + Send + Sync>(&self) {
         let mut ws = WriteSet::local();
         let mut rs = ReadSet::local();
@@ -503,31 +505,35 @@ mod txn_tests {
                 .spawn(move || {
                     if thread_no == 0 {
                         // Streamliner thread
-                        *tvar = txn.begin(|t| {
-                            let x = t.read(&tvar);
-                            assert_eq!(x, 100);
+                        *tvar = txn
+                            .begin(|t| {
+                                let x = t.read(&tvar);
+                                assert_eq!(x, 100);
 
-                            thread::sleep(Duration::from_millis(300));
+                                thread::sleep(Duration::from_millis(300));
 
-                            let x = t.read(&tvar);
-                            assert_eq!(x, 123_000);
-                            x
-                        });
+                                let x = t.read(&tvar);
+                                assert_eq!(x, 123_000);
+                                x
+                            })
+                            .unwrap();
                     } else {
                         // Interceptor thread
-                        *tvar = txn.begin(|t| {
-                            thread::sleep(Duration::from_millis(100));
+                        *tvar = txn
+                            .begin(|t| {
+                                thread::sleep(Duration::from_millis(100));
 
-                            let mut x = t.read(&tvar);
-                            assert_eq!(x, 100);
+                                let mut x = t.read(&tvar);
+                                assert_eq!(x, 100);
 
-                            x = 123_000;
-                            t.write(&mut tvar, x);
+                                x = 123_000;
+                                t.write(&mut tvar, x);
 
-                            thread::sleep(Duration::from_millis(100));
+                                thread::sleep(Duration::from_millis(100));
 
-                            x
-                        });
+                                x
+                            })
+                            .unwrap();
                     }
                 })
                 .unwrap();
@@ -622,34 +628,38 @@ mod txn_tests {
                 .spawn(move || {
                     if thread_no % 2 == 0 {
                         // Streamliner thread
-                        *tvar = txn.begin(|t| {
-                            let x = t.read(&tvar);
-                            assert_eq!(x, 100);
+                        *tvar = txn
+                            .begin(|t| {
+                                let x = t.read(&tvar);
+                                assert_eq!(x, 100);
 
-                            thread::sleep(Duration::from_millis(300));
+                                thread::sleep(Duration::from_millis(300));
 
-                            let mut x = t.read(&tvar);
-                            assert_eq!(x, 100);
+                                let mut x = t.read(&tvar);
+                                assert_eq!(x, 100);
 
-                            x = 1453;
-                            t.write(&mut tvar, x);
+                                x = 1453;
+                                t.write(&mut tvar, x);
 
-                            t.read(&tvar)
-                        });
+                                t.read(&tvar)
+                            })
+                            .unwrap();
                     } else {
                         // Interceptor thread
-                        *tvar = txn.begin(|t| {
-                            thread::sleep(Duration::from_millis(100));
+                        *tvar = txn
+                            .begin(|t| {
+                                thread::sleep(Duration::from_millis(100));
 
-                            let mut x = t.read(&tvar);
-                            assert_eq!(x, 100);
+                                let mut x = t.read(&tvar);
+                                assert_eq!(x, 100);
 
-                            x = 123_000;
-                            t.write(&mut tvar, x);
+                                x = 123_000;
+                                t.write(&mut tvar, x);
 
-                            thread::sleep(Duration::from_millis(100));
-                            x
-                        });
+                                thread::sleep(Duration::from_millis(100));
+                                x
+                            })
+                            .unwrap();
                     }
                 })
                 .unwrap();

@@ -22,6 +22,7 @@ use parking_lot::*;
 
 use super::utils;
 
+use crate::txn::transact::TransactionConcurrency;
 use crate::txn::writeset::WriteSet;
 use std::alloc::{dealloc, Layout};
 use std::any::Any;
@@ -142,7 +143,11 @@ where
             TransactionState::RollingBack => {
                 // Give some time to recover and prevent inconsistency with giving only the pure
                 // data back.
-                std::thread::sleep(Duration::from_millis(10));
+                // std::thread::sleep(Duration::from_millis(10));
+                self.get_data()
+            }
+            TransactionState::Suspended => {
+                std::thread::sleep(Duration::from_millis(100));
                 self.get_data()
             }
             TransactionState::RolledBack => {
@@ -211,6 +216,10 @@ where
 
                 // panic!("Panic abort, no writes are possible.");
                 txn.state.replace_with(|_| TransactionState::Unknown);
+                self.get_data()
+            }
+            TransactionState::Suspended => {
+                std::thread::sleep(Duration::from_millis(100));
                 self.get_data()
             }
             s => {
