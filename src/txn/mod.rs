@@ -5,6 +5,8 @@ mod utils;
 mod version;
 mod writeset;
 
+/// Transactional system errors
+pub mod errors;
 /// Transaction management definitions
 pub mod transact;
 /// Transactional variable definitions

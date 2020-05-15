@@ -126,13 +126,15 @@ mod ltable_tests {
 
         let mut tvar = TVar::new(ltable);
 
-        let mut res = txn.begin(|t: &mut Txn| {
-            let mut x = t.read(&tvar);
-            x.insert("taetigkeit".into(), "ingenieur".into());
-            // dbg!(&tvar.get_data());
-            t.write(&mut tvar, x.clone());
-            t.read(&tvar)
-        });
+        let mut res = txn
+            .begin(|t: &mut Txn| {
+                let mut x = t.read(&tvar);
+                x.insert("taetigkeit".into(), "ingenieur".into());
+                // dbg!(&tvar.get_data());
+                t.write(&mut tvar, x.clone());
+                t.read(&tvar)
+            })
+            .unwrap();
 
         dbg!(&res);
 
@@ -147,18 +149,22 @@ mod ltable_tests {
             assert_eq!(x.get("taetigkeit".into()), Some(&String::from("ingenieur")));
         });
 
-        res = txn.begin(|t| {
-            let mut x = t.read(&tvar);
-            x.insert("a".into(), "b".into());
-            x
-        });
+        res = txn
+            .begin(|t| {
+                let mut x = t.read(&tvar);
+                x.insert("a".into(), "b".into());
+                x
+            })
+            .unwrap();
 
         // Repetitive insert 2
-        res = txn.begin(|te| {
-            let mut x = te.read(&tvar);
-            x.insert("a".into(), "b".into());
-            x
-        });
+        res = txn
+            .begin(|te| {
+                let mut x = te.read(&tvar);
+                x.insert("a".into(), "b".into());
+                x
+            })
+            .unwrap();
 
         // Repeatable Reads
         assert_eq!(
@@ -184,13 +190,15 @@ mod ltable_tests {
 
         let mut tvar = TVar::new(ltable);
 
-        let mut res = txn.begin(|t: &mut Txn| {
-            let mut x = t.read(&tvar);
-            x.insert("taetigkeit".into(), "ingenieur".into());
-            // dbg!(&tvar.get_data());
-            t.write(&mut tvar, x.clone());
-            t.read(&tvar)
-        });
+        let mut res = txn
+            .begin(|t: &mut Txn| {
+                let mut x = t.read(&tvar);
+                x.insert("taetigkeit".into(), "ingenieur".into());
+                // dbg!(&tvar.get_data());
+                t.write(&mut tvar, x.clone());
+                t.read(&tvar)
+            })
+            .unwrap();
 
         dbg!("TVAR_RES", &res);
         tvar.open_write(res.clone());
@@ -208,18 +216,22 @@ mod ltable_tests {
             assert_eq!(x.get("taetigkeit".into()), Some(&String::from("ingenieur")));
         });
 
-        res = txn.begin(|t| {
-            let mut x = t.read(&tvar);
-            x.insert("a".into(), "b".into());
-            x
-        });
+        res = txn
+            .begin(|t| {
+                let mut x = t.read(&tvar);
+                x.insert("a".into(), "b".into());
+                x
+            })
+            .unwrap();
 
         // Repetitive insert 2
-        res = txn.begin(|te| {
-            let mut x = te.read(&tvar);
-            x.insert("a".into(), "b".into());
-            x
-        });
+        res = txn
+            .begin(|te| {
+                let mut x = te.read(&tvar);
+                x.insert("a".into(), "b".into());
+                x
+            })
+            .unwrap();
 
         // Repeatable Reads
         assert_eq!(
@@ -295,18 +307,21 @@ mod ltable_tests {
                                     t.write(&mut alice_accounts[0], a0.clone());
                                     t.write(&mut alice_accounts[1], a1.clone());
                                     t.write(&mut bob_account, b.clone());
-                                });
+                                })
+                                .unwrap();
                             } else {
                                 // assert that the sum of alice's accounts
                                 // never go negative
                                 // let r0: &LTable<String, i64> = &*alice_accounts[0];
-                                let r = txn.begin(|_t| {
-                                    (
-                                        sum_table(&*alice_accounts[0]),
-                                        sum_table(&*alice_accounts[1]),
-                                        sum_table(&*bob_account),
-                                    )
-                                });
+                                let r = txn
+                                    .begin(|_t| {
+                                        (
+                                            sum_table(&*alice_accounts[0]),
+                                            sum_table(&*alice_accounts[1]),
+                                            sum_table(&*bob_account),
+                                        )
+                                    })
+                                    .unwrap();
 
                                 // dbg!("TESTRESULT", &r);
 
@@ -410,13 +425,15 @@ mod ltable_tests {
                             } else {
                                 // assert that the sum of alice's accounts
                                 // never go negative
-                                let r = txn.begin(|_t| {
-                                    (
-                                        sum_table(&*alice_accounts[0]),
-                                        sum_table(&*alice_accounts[1]),
-                                        sum_table(&*bob_account),
-                                    )
-                                });
+                                let r = txn
+                                    .begin(|_t| {
+                                        (
+                                            sum_table(&*alice_accounts[0]),
+                                            sum_table(&*alice_accounts[1]),
+                                            sum_table(&*bob_account),
+                                        )
+                                    })
+                                    .unwrap();
 
                                 // dbg!("TESTRESULT", &r);
 

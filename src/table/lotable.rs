@@ -4,6 +4,7 @@ use crate::txn::prelude::*;
 use std::collections::hash_map::{Keys, RandomState};
 use std::collections::HashMap;
 
+use anyhow::*;
 use std::hash::Hash;
 use std::hash::{BuildHasher, Hasher};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -72,64 +73,62 @@ where
     }
 
     #[inline]
-    pub fn insert(&self, k: K, v: V) -> Option<Arc<Option<V>>> {
+    pub fn insert(&self, k: K, v: V) -> Result<Arc<Option<V>>> {
         let tvar = self.seek_tvar(&k);
 
-        let previous = self.txn.begin(|t| {
-            let previous: Arc<AtomicBox<Option<V>>> = Arc::new(AtomicBox::new(None));
-            let container = t.read(&tvar);
-            container.replace_with(|r| {
-                let mut entries = r.0.clone();
-                let p = entries.insert(k.clone(), v.clone());
-                previous.replace_with(|_| p.clone());
-                Container(entries)
-            });
+        let container = self.txn.begin(|t| t.read(&tvar))?;
 
-            previous
+        let previous: Arc<AtomicBox<Option<V>>> = Arc::new(AtomicBox::new(None));
+        container.replace_with(|r| {
+            let mut entries = r.0.clone();
+            let p = entries.insert(k.clone(), v.clone());
+            previous.replace_with(|_| p.clone());
+            Container(entries)
         });
 
-        previous.extract().ok()
+        previous.extract()
     }
 
     #[inline]
-    pub fn remove(&self, k: &K) -> Option<Arc<Option<V>>> {
+    pub fn remove(&self, k: &K) -> Result<Arc<Option<V>>> {
         let tvar = self.seek_tvar(&k);
 
-        let previous = self.txn.begin(|t| {
-            let previous: Arc<AtomicBox<Option<V>>> = Arc::new(AtomicBox::new(None));
-            let container = t.read(&tvar);
-            container.replace_with(|r| {
-                let mut c = r.0.clone();
-                let p = c.remove(k);
-                previous.replace_with(|_| p.clone());
-                Container(c)
-            });
+        let container = self.txn.begin(|t| t.read(&tvar))?;
 
-            previous
+        let previous: Arc<AtomicBox<Option<V>>> = Arc::new(AtomicBox::new(None));
+        container.replace_with(|r| {
+            let mut c = r.0.clone();
+            let p = c.remove(k);
+            previous.replace_with(|_| p.clone());
+            Container(c)
         });
 
-        previous.extract().ok()
+        previous.extract()
     }
 
     #[inline]
     pub fn get(&self, k: &K) -> Option<V> {
         let tvar = self.seek_tvar(k);
 
-        self.txn.begin(|t| {
-            let container = t.read(&tvar);
-            let entries = container.get();
-            entries.0.get(k).cloned()
-        })
+        self.txn
+            .begin(|t| {
+                let container = t.read(&tvar);
+                let entries = container.get();
+                entries.0.get(k).cloned()
+            })
+            .unwrap_or(None)
     }
 
     #[inline]
     pub fn contains_key(&self, k: &K) -> bool {
         let tvar = self.seek_tvar(&k);
 
-        self.txn.begin(|t| {
-            let container = t.read(&tvar);
-            container.get().0.contains_key(k)
-        })
+        self.txn
+            .begin(|t| {
+                let container = t.read(&tvar);
+                container.get().0.contains_key(k)
+            })
+            .unwrap_or(false)
     }
 
     #[inline]
@@ -141,31 +140,35 @@ where
 
     pub fn keys<'table>(&'table self) -> impl Iterator<Item = K> + 'table {
         self.latch.iter().flat_map(move |b| {
-            self.txn.begin(|t| {
-                let container = t.read(&b);
-                container
-                    .get()
-                    .0
-                    .keys()
-                    .into_iter()
-                    .map(Clone::clone)
-                    .collect::<Vec<K>>()
-            })
+            self.txn
+                .begin(|t| {
+                    let container = t.read(&b);
+                    container
+                        .get()
+                        .0
+                        .keys()
+                        .into_iter()
+                        .map(Clone::clone)
+                        .collect::<Vec<K>>()
+                })
+                .unwrap_or(Vec::new())
         })
     }
 
     pub fn values<'table>(&'table self) -> impl Iterator<Item = V> + 'table {
         self.latch.iter().flat_map(move |b| {
-            self.txn.begin(|t| {
-                let container = t.read(&b);
-                container
-                    .get()
-                    .0
-                    .values()
-                    .into_iter()
-                    .map(Clone::clone)
-                    .collect::<Vec<V>>()
-            })
+            self.txn
+                .begin(|t| {
+                    let container = t.read(&b);
+                    container
+                        .get()
+                        .0
+                        .values()
+                        .into_iter()
+                        .map(Clone::clone)
+                        .collect::<Vec<V>>()
+                })
+                .unwrap_or(Vec::new())
         })
     }
 
