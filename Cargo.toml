@@ -60,3 +60,20 @@ harness = false
 name = "lotable_threaded_join_benches"
 path = "benches/lotable_threaded_join_benches.rs"
 harness = false
+
+[[bench]]
+name = "arc_rwlock_benches"
+path = "benches/arc_rwlock_benches.rs"
+harness = false
+
+[[bench]]
+name = "parameterized_benches"
+path = "benches/parameterized_benches.rs"
+harness = false
+
+
+[profile.release]
+debug = true
+
+[profile.bench]
+debug = true

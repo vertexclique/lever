@@ -1,8 +1,9 @@
 use lever::prelude::*;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
+use std::collections::HashMap;
 
 fn main() {
-    let lotable: Arc<LOTable<String, u64>> = Arc::new(LOTable::new());
+    let lotable: Arc<RwLock<HashMap<String, u64>>> = Arc::new(RwLock::new(HashMap::default()));
 
     // RW from 1_000 threads concurrently.
     let thread_count = 8;
@@ -15,8 +16,12 @@ fn main() {
             .name(format!("t_{}", thread_no))
             .spawn(move || {
                 let key = format!("{}", thread_no);
-                lotable.insert(key.clone(), thread_no);
-                let _ = lotable.get(&key).unwrap();
+                let mut loguard = lotable.write().unwrap();
+                loguard.insert(key.clone(), thread_no);
+                drop(loguard);
+
+                let loguard = lotable.read().unwrap();
+                let _ = loguard.get(&key).unwrap();
             })
             .unwrap();
 

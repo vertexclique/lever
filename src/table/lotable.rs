@@ -2,7 +2,7 @@ use crate::sync::atomics::AtomicBox;
 use crate::txn::prelude::*;
 
 use std::collections::hash_map::{Keys, RandomState};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use anyhow::*;
 use std::hash::Hash;
@@ -10,7 +10,7 @@ use std::hash::{BuildHasher, Hasher};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
-const DEFAULT_CAP: usize = 128;
+const DEFAULT_CAP: usize = 1024;
 
 #[derive(Clone)]
 ///
@@ -21,7 +21,7 @@ const DEFAULT_CAP: usize = 128;
 /// it is both lock and wait free.
 pub struct LOTable<K, V, S = RandomState>
 where
-    K: 'static + PartialEq + Eq + Hash + Clone + Send + Sync,
+    K: 'static + PartialEq + Eq + Hash + Clone + Send + Sync + Ord,
     V: 'static + Clone + Send + Sync,
     S: BuildHasher,
 {
@@ -33,7 +33,7 @@ where
 
 impl<K, V> LOTable<K, V, RandomState>
 where
-    K: PartialEq + Eq + Hash + Clone + Send + Sync,
+    K: PartialEq + Eq + Hash + Clone + Send + Sync + Ord,
     V: Clone + Send + Sync,
 {
     pub fn new() -> Self {
@@ -47,7 +47,7 @@ where
 
 impl<K, V, S> LOTable<K, V, S>
 where
-    K: PartialEq + Eq + Hash + Clone + Send + Sync,
+    K: PartialEq + Eq + Hash + Clone + Send + Sync + Ord,
     V: Clone + Send + Sync,
     S: BuildHasher,
 {
@@ -65,7 +65,7 @@ where
         ));
 
         Self {
-            latch: vec![TVar::new(Arc::new(AtomicBox::new(Container(HashMap::default())))); cap],
+            latch: vec![TVar::new(Arc::new(AtomicBox::new(Container(BTreeMap::default())))); cap],
             txn_man,
             txn,
             hash_builder: hasher,
@@ -192,9 +192,9 @@ where
 }
 
 #[derive(Clone)]
-struct Container<K, V>(HashMap<K, V>)
+struct Container<K, V>(BTreeMap<K, V>)
 where
-    K: PartialEq + Hash + Clone + Send + Sync,
+    K: PartialEq + Hash + Clone + Send + Sync + Ord,
     V: Clone + Send + Sync;
 
 // impl<K, V, S> Debug for LOTable<K, V, S>

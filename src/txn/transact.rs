@@ -142,7 +142,7 @@ impl Txn {
         R: 'static + Any + Clone + Send + Sync,
     {
         let r = loop {
-            info!("tx_begin_read::txid::{}", self.txid);
+            // info!("tx_begin_read::txid::{}", self.txid);
 
             let me = self.clone();
             Self::set_local(me);
