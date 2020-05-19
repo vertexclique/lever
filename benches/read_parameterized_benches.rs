@@ -15,7 +15,7 @@ fn pure_read(lotable: Arc<LOTable<String, u64>>, key: String, op_count: usize) {
 fn bench_pure_reads(c: &mut Criterion) {
     let lotable: Arc<LOTable<String, u64>> = Arc::new(LOTable::new());
     let key: String = "CORE".into();
-    lotable.insert(key.clone(), 123_456);
+    let _ = lotable.insert(key.clone(), 123_456);
 
     let mut group = c.benchmark_group("parameterized_read");
 
@@ -49,7 +49,7 @@ fn bench_pure_reads(c: &mut Criterion) {
 //                     lotable.get(&key);
 //                 } else {
 //                     let data = lotable.get(&key).unwrap();
-//                     lotable.insert(key, data + 1);
+//                     let _ = lotable.insert(key, data + 1);
 //                 }
 //             })
 //             .unwrap();
@@ -69,7 +69,7 @@ fn bench_pure_reads(c: &mut Criterion) {
 //         Arc::new(table)
 //     };
 //     let key: String = "CORE".into();
-//     lotable.insert(key.clone(), 123_456);
+//     let _ = lotable.insert(key.clone(), 123_456);
 //
 //     let threads = 8;
 //
@@ -100,7 +100,7 @@ fn bench_pure_reads(c: &mut Criterion) {
 //         let t = std::thread::Builder::new()
 //             .name(format!("t_{}", thread_no))
 //             .spawn(move || {
-//                 lotable.insert(key, thread_no);
+//                 let _ = lotable.insert(key, thread_no);
 //             })
 //             .unwrap();
 //
@@ -119,7 +119,7 @@ fn bench_pure_reads(c: &mut Criterion) {
 //         Arc::new(table)
 //     };
 //     let key: String = "CORE".into();
-//     lotable.insert(key.clone(), 123_456);
+//     let _ = lotable.insert(key.clone(), 123_456);
 //
 //     let threads = 8;
 //

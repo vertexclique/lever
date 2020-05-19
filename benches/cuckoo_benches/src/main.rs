@@ -95,7 +95,7 @@ impl<K> CollectionHandle for LOBenchTable<K>
 
     fn update(&mut self, key: &Self::Key) -> bool {
         if let Some(_x) = self.0.get(key) {
-            self.0.insert(*key, 1);
+            let _ = self.0.insert(*key, 1);
             true
         } else {
             false

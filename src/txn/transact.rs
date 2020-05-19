@@ -142,7 +142,7 @@ impl Txn {
         R: 'static + Any + Clone + Send + Sync,
     {
         let r = loop {
-            // info!("tx_begin_read::txid::{}", self.txid);
+            debug!("tx_begin_read::txid::{}", TxnManager::rts());
 
             let me = self.clone();
             Self::set_local(me);
@@ -305,7 +305,7 @@ impl Txn {
             // let mut dest: T = k.open_read();
             k.data = Arc::new(source.clone());
             k.set_stamp(w_ts);
-            info!("Enqueued writes are written");
+            debug!("Enqueued writes are written");
         }
 
         ws.unlock::<T>();

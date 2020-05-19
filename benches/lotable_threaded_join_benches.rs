@@ -28,11 +28,11 @@ fn pure_read(lotable: Arc<LOTable<String, u64>>, key: String, thread_count: u64)
 fn bench_lotable_pure_reads(c: &mut Criterion) {
     let lotable = {
         let table: LOTable<String, u64> = LOTable::new();
-        table.insert("data".into(), 1_u64);
+        let _ = table.insert("data".into(), 1_u64);
         Arc::new(table)
     };
     let key: String = "CORE".into();
-    lotable.insert(key.clone(), 123_456);
+    let _ = lotable.insert(key.clone(), 123_456);
 
     let threads = 8;
 
@@ -63,7 +63,7 @@ fn rw_pareto(lotable: Arc<LOTable<String, u64>>, key: String, dist: f64, thread_
                     lotable.get(&key);
                 } else {
                     let data = lotable.get(&key).unwrap();
-                    lotable.insert(key, data + 1);
+                    let _ = lotable.insert(key, data + 1);
                 }
             })
             .unwrap();
@@ -79,11 +79,11 @@ fn rw_pareto(lotable: Arc<LOTable<String, u64>>, key: String, dist: f64, thread_
 fn bench_lotable_rw_pareto(c: &mut Criterion) {
     let lotable = {
         let table: LOTable<String, u64> = LOTable::new();
-        table.insert("data".into(), 1_u64);
+        let _ = table.insert("data".into(), 1_u64);
         Arc::new(table)
     };
     let key: String = "CORE".into();
-    lotable.insert(key.clone(), 123_456);
+    let _ = lotable.insert(key.clone(), 123_456);
 
     let threads = 8;
 
@@ -114,7 +114,7 @@ fn pure_writes(lotable: Arc<LOTable<String, u64>>, key: String, thread_count: u6
         let t = std::thread::Builder::new()
             .name(format!("t_{}", thread_no))
             .spawn(move || {
-                lotable.insert(key, thread_no);
+                let _ = lotable.insert(key, thread_no);
             })
             .unwrap();
 
@@ -129,11 +129,11 @@ fn pure_writes(lotable: Arc<LOTable<String, u64>>, key: String, thread_count: u6
 fn bench_lotable_pure_writes(c: &mut Criterion) {
     let lotable = {
         let table: LOTable<String, u64> = LOTable::new();
-        table.insert("data".into(), 1_u64);
+        let _ = table.insert("data".into(), 1_u64);
         Arc::new(table)
     };
     let key: String = "CORE".into();
-    lotable.insert(key.clone(), 123_456);
+    let _ = lotable.insert(key.clone(), 123_456);
 
     let threads = 8;
 
