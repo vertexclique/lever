@@ -67,7 +67,7 @@ impl Lever {
     /// Builder method for transactional optimistic, repeatable read in-memory table.
     pub fn new_lotable<K, V>(&self) -> LOTable<K, V>
     where
-        K: 'static + PartialEq + Eq + Hash + Clone + Send + Sync,
+        K: 'static + PartialEq + Eq + Hash + Clone + Send + Sync + Ord,
         V: 'static + Clone + Send + Sync,
     {
         LOTable::new()

@@ -1,11 +1,11 @@
 use criterion::{criterion_group, criterion_main, BatchSize, Criterion, Throughput};
-use lever::table::prelude::*;
 
 use rand::prelude::*;
 use rand_distr::Pareto;
-use std::sync::Arc;
+use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
 
-fn pure_read(lotable: Arc<LOTable<String, u64>>, key: String, thread_count: u64) {
+fn pure_read(lotable: Arc<RwLock<HashMap<String, u64>>>, key: String, thread_count: u64) {
     let mut threads = vec![];
 
     for thread_no in 0..thread_count {
@@ -14,7 +14,14 @@ fn pure_read(lotable: Arc<LOTable<String, u64>>, key: String, thread_count: u64)
 
         let t = std::thread::Builder::new()
             .name(format!("t_{}", thread_no))
-            .spawn(move || lotable.get(&key))
+            .spawn(move || {
+                let loguard = lotable.read().unwrap();
+                loguard.get(&key);
+
+                // if let Ok(loguard) = lotable.read() {
+                //     loguard.get(&key);
+                // }
+            })
             .unwrap();
 
         threads.push(t);
@@ -25,18 +32,17 @@ fn pure_read(lotable: Arc<LOTable<String, u64>>, key: String, thread_count: u64)
     }
 }
 
-fn bench_lotable_pure_reads(c: &mut Criterion) {
+fn bench_arc_rwlock_pure_reads(c: &mut Criterion) {
     let lotable = {
-        let table: LOTable<String, u64> = LOTable::new();
-        let _ = table.insert("data".into(), 1_u64);
-        Arc::new(table)
+        let mut table: HashMap<String, u64> = HashMap::new();
+        table.insert("data".into(), 1_u64);
+        Arc::new(RwLock::new(table))
     };
     let key: String = "CORE".into();
-    let _ = lotable.insert(key.clone(), 123_456);
 
     let threads = 8;
 
-    let mut group = c.benchmark_group("lotable_threaded_join_read_throughput");
+    let mut group = c.benchmark_group("arc_rwlock_read_throughput");
     group.throughput(Throughput::Elements(threads as u64));
     group.bench_function("pure reads", move |b| {
         b.iter_batched(
@@ -49,7 +55,12 @@ fn bench_lotable_pure_reads(c: &mut Criterion) {
 
 ////////////////////////////////
 
-fn rw_pareto(lotable: Arc<LOTable<String, u64>>, key: String, dist: f64, thread_count: u64) {
+fn rw_pareto(
+    lotable: Arc<RwLock<HashMap<String, u64>>>,
+    key: String,
+    dist: f64,
+    thread_count: u64,
+) {
     let mut threads = vec![];
 
     for thread_no in 0..thread_count {
@@ -60,10 +71,27 @@ fn rw_pareto(lotable: Arc<LOTable<String, u64>>, key: String, dist: f64, thread_
             .name(format!("t_{}", thread_no))
             .spawn(move || {
                 if dist < 0.8_f64 {
-                    lotable.get(&key);
+                    let loguard = lotable.read().unwrap();
+                    loguard.get(&key);
+
+                // if let Ok(loguard) = lotable.read() {
+                //     loguard.get(&key);
+                // }
                 } else {
-                    let data = lotable.get(&key).unwrap();
-                    let _ = lotable.insert(key, data + 1);
+                    let loguard = lotable.read().unwrap();
+                    let data: u64 = *loguard.get(&key).unwrap();
+
+                    // if let Ok(loguard) = lotable.read() {
+                    //     if let Some(datac) = loguard.get(&key) {
+                    //         data = *datac;
+                    //     }
+                    // }
+
+                    let mut loguard = lotable.write().unwrap();
+                    loguard.insert(key, data + 1);
+                    // if let Ok(mut loguard) = lotable.write() {
+                    //     loguard.insert(key, data + 1);
+                    // }
                 }
             })
             .unwrap();
@@ -76,18 +104,17 @@ fn rw_pareto(lotable: Arc<LOTable<String, u64>>, key: String, dist: f64, thread_
     }
 }
 
-fn bench_lotable_rw_pareto(c: &mut Criterion) {
+fn bench_arc_rwlock_rw_pareto(c: &mut Criterion) {
     let lotable = {
-        let table: LOTable<String, u64> = LOTable::new();
-        let _ = table.insert("data".into(), 1_u64);
-        Arc::new(table)
+        let mut table: HashMap<String, u64> = HashMap::new();
+        table.insert("data".into(), 1_u64);
+        Arc::new(RwLock::new(table))
     };
     let key: String = "CORE".into();
-    let _ = lotable.insert(key.clone(), 123_456);
 
     let threads = 8;
 
-    let mut group = c.benchmark_group("lotable_threaded_join_rw_pareto_throughput");
+    let mut group = c.benchmark_group("arc_rwlock_rw_pareto_throughput");
     group.throughput(Throughput::Elements(threads as u64));
     group.bench_function("rw_pareto", move |b| {
         b.iter_batched(
@@ -104,7 +131,7 @@ fn bench_lotable_rw_pareto(c: &mut Criterion) {
 
 ////////////////////////////////
 
-fn pure_writes(lotable: Arc<LOTable<String, u64>>, key: String, thread_count: u64) {
+fn pure_writes(lotable: Arc<RwLock<HashMap<String, u64>>>, key: String, thread_count: u64) {
     let mut threads = vec![];
 
     for thread_no in 0..thread_count {
@@ -114,7 +141,9 @@ fn pure_writes(lotable: Arc<LOTable<String, u64>>, key: String, thread_count: u6
         let t = std::thread::Builder::new()
             .name(format!("t_{}", thread_no))
             .spawn(move || {
-                let _ = lotable.insert(key, thread_no);
+                if let Ok(mut loguard) = lotable.write() {
+                    loguard.insert(key, thread_no);
+                }
             })
             .unwrap();
 
@@ -126,18 +155,17 @@ fn pure_writes(lotable: Arc<LOTable<String, u64>>, key: String, thread_count: u6
     }
 }
 
-fn bench_lotable_pure_writes(c: &mut Criterion) {
+fn bench_arc_rwlock_pure_writes(c: &mut Criterion) {
     let lotable = {
-        let table: LOTable<String, u64> = LOTable::new();
-        let _ = table.insert("data".into(), 1_u64);
-        Arc::new(table)
+        let mut table: HashMap<String, u64> = HashMap::new();
+        table.insert("data".into(), 1_u64);
+        Arc::new(RwLock::new(table))
     };
     let key: String = "CORE".into();
-    let _ = lotable.insert(key.clone(), 123_456);
 
     let threads = 8;
 
-    let mut group = c.benchmark_group("lotable_threaded_join_write_throughput");
+    let mut group = c.benchmark_group("arc_rwlock_write_throughput");
     group.throughput(Throughput::Elements(threads as u64));
     group.bench_function("pure writes", move |b| {
         b.iter_batched(
@@ -149,8 +177,8 @@ fn bench_lotable_pure_writes(c: &mut Criterion) {
 }
 
 criterion_group! {
-    name = lotable_threaded_join_benches;
+    name = arc_rwlock_benches;
     config = Criterion::default();
-    targets = bench_lotable_pure_reads, bench_lotable_rw_pareto, bench_lotable_pure_writes
+    targets = bench_arc_rwlock_pure_reads, bench_arc_rwlock_rw_pareto, bench_arc_rwlock_pure_writes
 }
-criterion_main!(lotable_threaded_join_benches);
+criterion_main!(arc_rwlock_benches);

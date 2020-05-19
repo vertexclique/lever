@@ -105,8 +105,8 @@ impl Default for TransactionState {
 /// This struct exposes various methods for controlling the transaction state throughout it's lifetime.
 #[derive(Clone)]
 pub struct Txn {
-    /// Id of the transaction
-    txid: u64,
+    /// Id of the transaction config
+    tx_config_id: u64,
 
     // NOTE: NonZeroU64 is std lib thread id interpret. Wait for the feature flag removal.
     /// Id of the thread in which this transaction started.
@@ -142,7 +142,7 @@ impl Txn {
         R: 'static + Any + Clone + Send + Sync,
     {
         let r = loop {
-            info!("tx_begin_read::txid::{}", self.txid);
+            debug!("tx_begin_read::txid::{}", TxnManager::rts());
 
             let me = self.clone();
             Self::set_local(me);
@@ -305,7 +305,7 @@ impl Txn {
             // let mut dest: T = k.open_read();
             k.data = Arc::new(source.clone());
             k.set_stamp(w_ts);
-            info!("Enqueued writes are written");
+            debug!("Enqueued writes are written");
         }
 
         ws.unlock::<T>();
@@ -341,8 +341,8 @@ impl Txn {
         TXN.with(|tx| tx.borrow().clone())
     }
 
-    pub(crate) fn get_id(&self) -> u64 {
-        self.txid
+    pub(crate) fn get_txn_config_id(&self) -> u64 {
+        self.tx_config_id
     }
 }
 
@@ -350,7 +350,7 @@ impl Default for Txn {
     #[cfg_attr(miri, ignore)]
     fn default() -> Self {
         Self {
-            txid: 0,
+            tx_config_id: 0,
             tid: thread::current().id(),
             iso: TransactionIsolation::ReadCommitted,
             cc: TransactionConcurrency::Optimistic,
@@ -450,9 +450,6 @@ impl TxnManager {
         _tx_size: usize,
         label: String,
     ) -> Txn {
-        // Timestamp and TX id are different concepts.
-        let cur_txid: u64 = self.txid.fetch_add(1, Ordering::SeqCst) + 1;
-
         match (&iso, &cc) {
             (TransactionIsolation::ReadCommitted, TransactionConcurrency::Optimistic) => {
                 todo!("OCC, with Read Committed, hasn't been implemented.");
@@ -464,8 +461,8 @@ impl TxnManager {
         }
 
         Txn {
-            txid: cur_txid,              //
-            tid: thread::current().id(), // Reset to thread id afterwards.
+            tx_config_id: self.txid.load(Ordering::SeqCst), //
+            tid: thread::current().id(),                    // Reset to thread id afterwards.
             iso,
             cc,
             state: Arc::new(AtomicBox::new(TransactionState::default())),
