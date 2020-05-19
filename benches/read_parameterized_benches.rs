@@ -1,19 +1,15 @@
-use criterion::{criterion_group, criterion_main, BatchSize, Criterion, Throughput, BenchmarkId};
+use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use lever::table::prelude::*;
 
-use rand::prelude::*;
-use rand_distr::Pareto;
 use std::sync::Arc;
 
 const MAX_THREADS: usize = 8;
 const OP_RANGES: &'static [usize] = &[100, 300, 500, 700, 1000, 3000, 5000];
 
 fn pure_read(lotable: Arc<LOTable<String, u64>>, key: String, op_count: usize) {
-    (0..op_count)
-        .into_iter()
-        .for_each(|_| {
-            let _ = lotable.get(&key);
-        })
+    (0..op_count).into_iter().for_each(|_| {
+        let _ = lotable.get(&key);
+    })
 }
 
 fn bench_pure_reads(c: &mut Criterion) {
@@ -21,26 +17,20 @@ fn bench_pure_reads(c: &mut Criterion) {
     let key: String = "CORE".into();
     lotable.insert(key.clone(), 123_456);
 
-    let mut group =
-        c.benchmark_group("parameterized_read");
+    let mut group = c.benchmark_group("parameterized_read");
 
-    (1..MAX_THREADS)
-        .for_each(|tid| {
-            for ops in OP_RANGES {
-                group.throughput(Throughput::Elements((tid * *ops) as u64));
-                group.bench_with_input(
-                    BenchmarkId::new(format!("{}", tid), ops),
-                    ops,
-                    |b, &i| {
-                        let pool = rayon::ThreadPoolBuilder::new()
-                            .num_threads(tid)
-                            .build()
-                            .unwrap();
-                        pool.install(|| b.iter(|| pure_read(lotable.clone(), key.clone(), i)));
-                    }
-                );
-            }
-        });
+    (1..MAX_THREADS).for_each(|tid| {
+        for ops in OP_RANGES {
+            group.throughput(Throughput::Elements((tid * *ops) as u64));
+            group.bench_with_input(BenchmarkId::new(format!("{}", tid), ops), ops, |b, &i| {
+                let pool = rayon::ThreadPoolBuilder::new()
+                    .num_threads(tid)
+                    .build()
+                    .unwrap();
+                pool.install(|| b.iter(|| pure_read(lotable.clone(), key.clone(), i)));
+            });
+        }
+    });
 }
 
 ////////////////////////////////

@@ -1,12 +1,15 @@
 use crate::sync::atomics::AtomicBox;
 use crate::txn::prelude::*;
 
-use std::collections::hash_map::{Keys, RandomState};
-use std::collections::BTreeMap;
+use std::collections::hash_map::{Iter, Keys, RandomState};
+use std::collections::HashMap;
 
 use anyhow::*;
+use std::collections::hash_map;
+use std::fmt;
 use std::hash::Hash;
 use std::hash::{BuildHasher, Hasher};
+use std::ptr::NonNull;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
@@ -21,7 +24,7 @@ const DEFAULT_CAP: usize = 1024;
 /// it is both lock and wait free.
 pub struct LOTable<K, V, S = RandomState>
 where
-    K: 'static + PartialEq + Eq + Hash + Clone + Send + Sync + Ord,
+    K: 'static + PartialEq + Eq + Hash + Clone + Send + Sync,
     V: 'static + Clone + Send + Sync,
     S: BuildHasher,
 {
@@ -33,7 +36,7 @@ where
 
 impl<K, V> LOTable<K, V, RandomState>
 where
-    K: PartialEq + Eq + Hash + Clone + Send + Sync + Ord,
+    K: PartialEq + Eq + Hash + Clone + Send + Sync,
     V: Clone + Send + Sync,
 {
     pub fn new() -> Self {
@@ -47,7 +50,7 @@ where
 
 impl<K, V, S> LOTable<K, V, S>
 where
-    K: PartialEq + Eq + Hash + Clone + Send + Sync + Ord,
+    K: PartialEq + Eq + Hash + Clone + Send + Sync,
     V: Clone + Send + Sync,
     S: BuildHasher,
 {
@@ -65,7 +68,7 @@ where
         ));
 
         Self {
-            latch: vec![TVar::new(Arc::new(AtomicBox::new(Container(BTreeMap::default())))); cap],
+            latch: vec![TVar::new(Arc::new(AtomicBox::new(Container(HashMap::default())))); cap],
             txn_man,
             txn,
             hash_builder: hasher,
@@ -132,6 +135,33 @@ where
     }
 
     #[inline]
+    pub fn len(&self) -> usize {
+        self.latch
+            .iter()
+            .map(move |b| {
+                self.txn
+                    .begin(|t| {
+                        let container = t.read(&b);
+                        container.get().0.len()
+                    })
+                    .unwrap_or(0_usize)
+            })
+            .sum()
+    }
+
+    #[inline]
+    pub fn iter(&self) -> LOIter<K, V> {
+        LOIter {
+            idx: 0,
+            inner: None,
+            reader: HashMap::default(),
+            current_frame: 0,
+            latch_snapshot: self.latch.clone(),
+            txn: self.txn.clone(),
+        }
+    }
+
+    #[inline]
     pub fn clear(&mut self) {
         self.latch.clear();
         // TODO: Shrink to fit as a optimized table.
@@ -182,6 +212,14 @@ where
         self.latch[self.hash(key)].clone()
     }
 
+    fn fetch_frame(&self, frame_id: usize) -> hash_map::HashMap<K, V> {
+        let frame_tvar = self.latch[frame_id].clone();
+        match self.txn.begin(|t| t.read(&frame_tvar)) {
+            Ok(init_frame) => init_frame.get().0.clone(),
+            Err(_) => HashMap::new(),
+        }
+    }
+
     ////////////////////////////////////////////////////////////////////////////////
     ////////// Transactional Area
     ////////////////////////////////////////////////////////////////////////////////
@@ -192,18 +230,117 @@ where
 }
 
 #[derive(Clone)]
-struct Container<K, V>(BTreeMap<K, V>)
+struct Container<K, V>(HashMap<K, V>)
 where
-    K: PartialEq + Hash + Clone + Send + Sync + Ord,
+    K: PartialEq + Hash + Clone + Send + Sync,
     V: Clone + Send + Sync;
 
-// impl<K, V, S> Debug for LOTable<K, V, S>
-//     where
-//         K: 'static + PartialEq + Eq + Hash + Clone + Send + Sync + Debug,
-//         V: 'static + Clone + Send + Sync + Debug,
-//         S: std::hash::BuildHasher
-// {
-//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-//         f.debug_map().entries(self.iter()).finish()
-//     }
-// }
+impl<K, V, S> Default for LOTable<K, V, S>
+where
+    K: 'static + PartialEq + Eq + Hash + Clone + Send + Sync,
+    V: 'static + Clone + Send + Sync,
+    S: Default + BuildHasher,
+{
+    /// Creates an empty `LOTable<K, V, S>`, with the `Default` value for the hasher.
+    #[inline]
+    fn default() -> LOTable<K, V, S> {
+        LOTable::with_capacity_and_hasher(128, Default::default())
+    }
+}
+
+impl<K, V, S> fmt::Debug for LOTable<K, V, S>
+where
+    K: 'static + PartialEq + Eq + Hash + Clone + Send + Sync + fmt::Debug,
+    V: 'static + Clone + Send + Sync + fmt::Debug,
+    S: std::hash::BuildHasher,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_map().entries(self.iter()).finish()
+    }
+}
+
+pub struct LOIter<'it, K, V>
+where
+    K: 'static + PartialEq + Eq + Hash + Clone + Send + Sync,
+    V: 'static + Clone + Send + Sync,
+{
+    idx: usize,
+    inner: Option<hash_map::Iter<'it, K, V>>,
+    reader: HashMap<K, V>,
+    current_frame: usize,
+    latch_snapshot: Vec<TVar<Arc<AtomicBox<Container<K, V>>>>>,
+    txn: Arc<Txn>,
+}
+
+impl<'it, K, V> Iterator for LOIter<'it, K, V>
+where
+    K: 'static + PartialEq + Eq + Hash + Clone + Send + Sync,
+    V: 'static + Clone + Send + Sync,
+{
+    type Item = (K, V);
+
+    #[inline(always)]
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.idx == 0 {
+            let tvar = &self.latch_snapshot[self.current_frame];
+            if let Ok(read) = self.txn.begin(|t| {
+                let frame = t.read(&tvar);
+                frame.get().0.clone()
+            }) {
+                self.reader = read;
+                self.inner = Some(unsafe { std::mem::transmute(self.reader.iter()) });
+            }
+        }
+
+        let read_iter = self.inner.as_mut().unwrap();
+        if let Some(x) = read_iter.next() {
+            self.idx += 1;
+            self.inner = Some(read_iter.clone());
+            Some((x.0.clone(), x.1.clone()))
+        } else {
+            if self.idx == self.reader.len() {
+                self.current_frame += 1;
+                self.idx = 0;
+            }
+            None
+        }
+    }
+
+    #[inline(always)]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let tvar = &self.latch_snapshot[self.current_frame];
+        if let Ok(frame_len) = self.txn.begin(|t| t.read(&tvar)) {
+            // TODO: (frame_len, Some(max_bound)) is possible.
+            // Written like this to not overshoot the alloc
+            (frame_len.get().0.len(), None)
+        } else {
+            (0, None)
+        }
+    }
+}
+
+#[cfg(test)]
+mod lotable_tests {
+    use super::LOTable;
+
+    #[test]
+    fn iter_generator() {
+        let lotable: LOTable<String, u64> = LOTable::new();
+        lotable.insert("Saudade0".to_string(), 123123);
+        lotable.insert("Saudade1".to_string(), 123123);
+        lotable.insert("Saudade2".to_string(), 123123);
+        lotable.insert("Saudade3".to_string(), 123123);
+        lotable.insert("Saudade4".to_string(), 123123);
+        lotable.insert("Saudade5".to_string(), 123123);
+
+        lotable.insert("123123".to_string(), 123123);
+        lotable.insert("1231231".to_string(), 123123);
+        lotable.insert("1231232".to_string(), 123123);
+        lotable.insert("1231233".to_string(), 123123);
+        lotable.insert("1231234".to_string(), 123123);
+        lotable.insert("1231235".to_string(), 123123);
+
+        let res: Vec<(String, u64)> = lotable.iter().collect();
+        assert_eq!(res.len(), 12);
+    }
+}

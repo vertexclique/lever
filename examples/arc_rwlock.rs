@@ -1,6 +1,5 @@
-use lever::prelude::*;
-use std::sync::{Arc, RwLock};
 use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
 
 fn main() {
     let lotable: Arc<RwLock<HashMap<String, u64>>> = Arc::new(RwLock::new(HashMap::default()));

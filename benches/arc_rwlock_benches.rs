@@ -2,8 +2,8 @@ use criterion::{criterion_group, criterion_main, BatchSize, Criterion, Throughpu
 
 use rand::prelude::*;
 use rand_distr::Pareto;
-use std::sync::{Arc, RwLock};
 use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
 
 fn pure_read(lotable: Arc<RwLock<HashMap<String, u64>>>, key: String, thread_count: u64) {
     let mut threads = vec![];
@@ -15,8 +15,7 @@ fn pure_read(lotable: Arc<RwLock<HashMap<String, u64>>>, key: String, thread_cou
         let t = std::thread::Builder::new()
             .name(format!("t_{}", thread_no))
             .spawn(move || {
-                let loguard =
-                    lotable.read().unwrap();
+                let loguard = lotable.read().unwrap();
                 loguard.get(&key);
 
                 // if let Ok(loguard) = lotable.read() {
@@ -56,7 +55,12 @@ fn bench_arc_rwlock_pure_reads(c: &mut Criterion) {
 
 ////////////////////////////////
 
-fn rw_pareto(lotable: Arc<RwLock<HashMap<String, u64>>>, key: String, dist: f64, thread_count: u64) {
+fn rw_pareto(
+    lotable: Arc<RwLock<HashMap<String, u64>>>,
+    key: String,
+    dist: f64,
+    thread_count: u64,
+) {
     let mut threads = vec![];
 
     for thread_no in 0..thread_count {
@@ -67,17 +71,15 @@ fn rw_pareto(lotable: Arc<RwLock<HashMap<String, u64>>>, key: String, dist: f64,
             .name(format!("t_{}", thread_no))
             .spawn(move || {
                 if dist < 0.8_f64 {
-                    let loguard =
-                        lotable.read().unwrap();
+                    let loguard = lotable.read().unwrap();
                     loguard.get(&key);
 
-                    // if let Ok(loguard) = lotable.read() {
-                    //     loguard.get(&key);
-                    // }
+                // if let Ok(loguard) = lotable.read() {
+                //     loguard.get(&key);
+                // }
                 } else {
-                    let loguard =
-                        lotable.read().unwrap();
-                    let mut data: u64 = *loguard.get(&key).unwrap();
+                    let loguard = lotable.read().unwrap();
+                    let data: u64 = *loguard.get(&key).unwrap();
 
                     // if let Ok(loguard) = lotable.read() {
                     //     if let Some(datac) = loguard.get(&key) {
