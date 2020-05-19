@@ -135,7 +135,7 @@ where
                 }
             }
             TransactionState::MarkedRollback => {
-                // info!("Starting rolling back: {}", txn.get_id());
+                debug!("Starting rolling back: {}", TxnManager::rts());
                 txn.rolling_back();
                 txn.on_abort::<T>();
                 self.get_data()
