@@ -1,3 +1,6 @@
+// Behind the feature gates
+#![cfg_attr(feature = "hw", feature(stdsimd))]
+
 // FIXME: Baking still
 #![allow(dead_code)]
 #![allow(unused_imports)]
@@ -29,6 +32,9 @@ pub mod sync;
 pub mod table;
 /// Transactional primitives and transaction management
 pub mod txn;
+
+/// Hardware transactional memory
+mod htm;
 
 use std::hash::Hash;
 use std::sync::Arc;

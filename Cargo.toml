@@ -29,8 +29,8 @@ exclude = [
 ]
 
 [features]
-default = []
-nightly = []
+default = ["hw"]
+hw = []
 
 [dependencies]
 log = "0.4"
