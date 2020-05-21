@@ -4,8 +4,8 @@ use super::ops::*;
 use std::arch::x86::{_XABORT_DEBUG, _XBEGIN_STARTED};
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::{
-    _xabort, _xabort_code, _xbegin, _xend, _XABORT_CAPACITY, _XABORT_CONFLICT, _XABORT_DEBUG,
-    _XABORT_EXPLICIT, _XABORT_RETRY, _XBEGIN_STARTED,
+    _xabort, _xabort_code, _xbegin, _xend, _xtest, _XABORT_CAPACITY, _XABORT_CONFLICT,
+    _XABORT_DEBUG, _XABORT_EXPLICIT, _XABORT_RETRY, _XBEGIN_STARTED,
 };
 
 /// Return code from _xbegin()
@@ -92,9 +92,9 @@ impl Ops for HTM {
         }
     }
     fn test(&self) -> HwTxTestCode {
-        todo!()
+        unsafe { HwTxTestCode(_xtest()) }
     }
     fn commit(&self) {
-        todo!()
+        unsafe { _xend() }
     }
 }
