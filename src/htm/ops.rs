@@ -1,6 +1,4 @@
-
 //#[cfg_attr(hw, attr)]
-
 
 // Intel RTM
 #[cfg(all(any(target_arch = "x86", target_arch = "x86_64"), feature = "hw"))]
@@ -8,11 +6,19 @@ use super::x86_64 as htm;
 
 // Aarch64 TME
 #[cfg(all(target_arch = "aarch64", feature = "hw"))]
-use aarch64 as htm;
+use super::aarch64 as htm;
 
+/// HTM support
 use htm::*;
 
-pub(in super) trait Ops {
+
+///
+/// Unified interface for TM operations at hw level
+pub(super) trait Ops {
+    ///
+    /// Runtime: TM hw feature existence
+    fn cpu_support(&self) -> bool;
+
     ///
     /// Begin transactional region
     fn begin(&self) -> HwTxBeginCode;

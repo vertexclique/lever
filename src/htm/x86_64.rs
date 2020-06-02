@@ -1,7 +1,10 @@
 use super::ops::*;
 
 #[cfg(target_arch = "x86")]
-use std::arch::x86::{_XABORT_DEBUG, _XBEGIN_STARTED};
+use std::arch::x86::{
+    _xabort, _xabort_code, _xbegin, _xend, _xtest, _XABORT_CAPACITY, _XABORT_CONFLICT,
+    _XABORT_DEBUG, _XABORT_EXPLICIT, _XABORT_RETRY, _XBEGIN_STARTED,
+};
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::{
     _xabort, _xabort_code, _xbegin, _xend, _xtest, _XABORT_CAPACITY, _XABORT_CONFLICT,
@@ -56,7 +59,7 @@ impl PartialEq for HwTxAbortCode {
     }
 }
 
-/// Return code from _xtest()
+/// Return code from __ttest()
 pub struct HwTxTestCode(u8);
 
 impl HwTxTestCode {
@@ -96,5 +99,8 @@ impl Ops for HTM {
     }
     fn commit(&self) {
         unsafe { _xend() }
+    }
+    fn cpu_support(&self) -> bool {
+        std::is_x86_feature_detected!("rtm")
     }
 }
