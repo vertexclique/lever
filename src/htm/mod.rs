@@ -5,4 +5,5 @@ mod x86_64;
 mod aarch64;
 
 /// Architecture operations
+#[cfg(feature = "hw")]
 mod ops;
