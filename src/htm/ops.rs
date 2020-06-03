@@ -11,7 +11,6 @@ use super::aarch64 as htm;
 /// HTM support
 use htm::*;
 
-
 ///
 /// Unified interface for TM operations at hw level
 pub(super) trait Ops {

@@ -2,9 +2,9 @@ use super::ops::*;
 
 #[cfg(target_arch = "aarch64")]
 use std::arch::aarch64::{
-    __tstart, __ttest, __tcommit, __tcancel,
-    _TMSTART_SUCCESS, _TMFAILURE_TRIVIAL, _TMFAILURE_SIZE, _TMFAILURE_RTRY, _TMFAILURE_REASON, _TMFAILURE_NEST, _TMFAILURE_MEM, _TMFAILURE_INT, _TMFAILURE_IMP,
-    _TMFAILURE_ERR, _TMFAILURE_DBG, _TMFAILURE_CNCL
+    __tcancel, __tcommit, __tstart, __ttest, _TMFAILURE_CNCL, _TMFAILURE_DBG, _TMFAILURE_ERR,
+    _TMFAILURE_IMP, _TMFAILURE_INT, _TMFAILURE_MEM, _TMFAILURE_NEST, _TMFAILURE_REASON,
+    _TMFAILURE_RTRY, _TMFAILURE_SIZE, _TMFAILURE_TRIVIAL, _TMSTART_SUCCESS,
 };
 
 /// Return code from __tstart()
@@ -124,7 +124,9 @@ impl Ops for HTM {
         unsafe {
             match reason_code {
                 HwTxAbortCode::Overhaul => __tcancel(HTM::_tcancel_code(HTM::OVERHAUL, true)),
-                HwTxAbortCode::UserlandAbort => __tcancel(HTM::_tcancel_code(HTM::USERLAND_ABORT, true)),
+                HwTxAbortCode::UserlandAbort => {
+                    __tcancel(HTM::_tcancel_code(HTM::USERLAND_ABORT, true))
+                }
             }
             std::hint::unreachable_unchecked()
         }
