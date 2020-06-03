@@ -52,13 +52,21 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: check
-          args: --all --bins --examples --tests
+          args: --no-default-features --all --bins --examples --tests
 
-      - name: tests
+      - name: tests nightly
+        if: matrix.version == 'nightly'
         uses: actions-rs/cargo@v1
         with:
           command: test
           args: --all
+
+      - name: tests stable
+        if: matrix.version == 'stable'
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --no-default-features --all
 
   check_fmt_and_docs:
     name: Checking fmt and docs
