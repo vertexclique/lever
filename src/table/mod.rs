@@ -4,7 +4,10 @@ pub mod lotable;
 #[doc(hidden)]
 pub mod ltable;
 
+pub mod hoptable;
+
 /// Prelude for transactional KV table implementations
 pub mod prelude {
+    pub use super::hoptable::*;
     pub use super::lotable::*;
 }

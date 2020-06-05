@@ -12,6 +12,7 @@ use std::arch::x86_64::{
 };
 
 /// Return code from _xbegin()
+#[derive(Debug)]
 pub struct HwTxBeginCode(u32);
 
 impl HwTxBeginCode {
@@ -59,7 +60,7 @@ impl PartialEq for HwTxAbortCode {
     }
 }
 
-/// Return code from __ttest()
+/// Return code from _xtest()
 pub struct HwTxTestCode(u8);
 
 impl HwTxTestCode {
@@ -69,7 +70,7 @@ impl HwTxTestCode {
     }
 
     #[inline]
-    fn depth(&self) -> usize {
+    pub fn depth(&self) -> usize {
         self.0 as usize
     }
 }

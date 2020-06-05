@@ -28,6 +28,7 @@ use std::{
     },
 };
 
+use crate::htm::ops::*;
 use crate::txn::conflicts::ConflictManager;
 use crate::txn::vars::TVar;
 use crate::txn::version::Version;

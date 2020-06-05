@@ -79,7 +79,10 @@ fn rw_pareto(
                 // }
                 } else {
                     let loguard = lotable.read().unwrap();
-                    let data: u64 = *loguard.get(&key).unwrap();
+                    if let Some(data) = loguard.get(&key) {
+                        let mut loguard = lotable.write().unwrap();
+                        loguard.insert(key, data + 1);
+                    }
 
                     // if let Ok(loguard) = lotable.read() {
                     //     if let Some(datac) = loguard.get(&key) {

@@ -6,4 +6,4 @@ mod aarch64;
 
 /// Architecture operations
 #[cfg(feature = "hw")]
-mod ops;
+pub mod ops;

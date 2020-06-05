@@ -1,5 +1,6 @@
 // Behind the feature gates
 #![cfg_attr(feature = "hw", feature(stdsimd))]
+#![feature(llvm_asm)]
 // FIXME: Baking still
 #![allow(dead_code)]
 #![allow(unused_imports)]
