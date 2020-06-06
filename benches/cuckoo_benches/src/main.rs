@@ -154,19 +154,40 @@ impl<K> CollectionHandle for HOPBenchTable<K>
 
 fn main() {
     tracing_subscriber::fmt::init();
-    // for n in 1..=num_cpus::get() {
+
+    // let num_threads = num_cpus::get();
+    let num_threads = 8;
+
+    println!("=========== RwLock =============");
+
+    Workload::new(10, Mix::read_heavy()).run::<RwLockTable<u64>>();
+    // for n in 1..=num_threads {
     //     Workload::new(n, Mix::read_heavy()).run::<RwLockTable<u64>>();
     // }
 
-    println!("========================");
+    println!("=========== LOTable =============");
 
     // for n in 1..=num_cpus::get() {
         // Workload::new(3, Mix::read_heavy()).run::<LOBenchTable<u64>>();
     // }
 
-    // let mut wrk = Workload::new(3, Mix::read_heavy());
-    // wrk.initial_capacity_log2(10);
+    // let mut wrk = Workload::new(1, Mix::read_heavy());
+    // wrk.initial_capacity_log2(20);
+    // wrk.operations(0.2);
     // wrk.run::<HOPBenchTable<u64>>();
 
-    Workload::new(1, Mix::read_heavy()).run::<HOPBenchTable<u64>>();
+    println!("=========== HOPTable =============");
+
+    Workload::new(10, Mix::read_heavy()).run::<HOPBenchTable<u64>>(); 
+    // for n in 1..=num_threads {
+    //     Workload::new(n, Mix::read_heavy()).run::<HOPBenchTable<u64>>();
+    // }
+
+    // HOPTable 10 threads
+    // Jun 07 01:05:10.155  INFO benchmark{mix=Mix { read: 94, insert: 2, remove: 1, update: 3, upsert: 0 } threads=10}: bustle: generating operation mix
+    //     Jun 07 01:05:10.156  INFO benchmark{mix=Mix { read: 94, insert: 2, remove: 1, update: 3, upsert: 0 } threads=10}: bustle: generating key space
+    //     Jun 07 01:05:10.597  INFO benchmark{mix=Mix { read: 94, insert: 2, remove: 1, update: 3, upsert: 0 } threads=10}: bustle: constructing initial table
+    //     Jun 07 01:05:35.570  INFO benchmark{mix=Mix { read: 94, insert: 2, remove: 1, update: 3, upsert: 0 } threads=10}: bustle: start workload mix
+    //     Jun 07 01:06:21.068  INFO benchmark{mix=Mix { read: 94, insert: 2, remove: 1, update: 3, upsert: 0 } threads=10}: bustle: workload mix finished took=45.496333897s ops=25165824 avg=1.807µs
+    //     25165824 operations across 10 thread(s) in 45.496333897s; time/op = 1.807µs
 }
