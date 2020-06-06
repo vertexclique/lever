@@ -106,7 +106,7 @@ impl<K> CollectionHandle for LOBenchTable<K>
 
 #[derive(Clone)]
 struct HOPBenchTable<K>(std::sync::Arc<HOPTable<K, u64>>)
-where K: 'static + Send + Sync + Clone + Hash + Eq + Ord;
+where K: 'static + Send + Sync + Clone + Hash + Eq + Ord + std::fmt::Debug;
 
 impl<K> Collection for HOPBenchTable<K>
     where
@@ -134,7 +134,7 @@ impl<K> CollectionHandle for HOPBenchTable<K>
     }
 
     fn insert(&mut self, key: &Self::Key) -> bool {
-        self.0.insert(*key, 1).map(|x| x.is_none()).unwrap()
+        self.0.insert(*key, 1).map(|x| x.is_some()).unwrap()
     }
 
     fn remove(&mut self, key: &Self::Key) -> bool {
@@ -164,5 +164,9 @@ fn main() {
         // Workload::new(3, Mix::read_heavy()).run::<LOBenchTable<u64>>();
     // }
 
-    Workload::new(3, Mix::read_heavy()).run::<HOPBenchTable<u64>>();
+    // let mut wrk = Workload::new(3, Mix::read_heavy());
+    // wrk.initial_capacity_log2(10);
+    // wrk.run::<HOPBenchTable<u64>>();
+
+    Workload::new(1, Mix::read_heavy()).run::<HOPBenchTable<u64>>();
 }
