@@ -5,13 +5,20 @@ use anyhow::*;
 
 use std::hash::Hash;
 use std::hash::{BuildHasher, Hasher};
-use std::collections::hash_map::{Iter, Keys, RandomState};
+use std::{alloc::Layout, collections::hash_map::{Iter, Keys, RandomState}};
 
 const HOP_RANGE: usize = 1 << 5;
 const ADD_RANGE: usize = 1 << 8;
 const MAX_SEGMENTS: usize = 1 << 20;
-const BUSY: isize = !0;
+const HOLE_EXIST: isize = -1;
+const ALREADY_FILLED: isize = -2;
 
+// TODO: KeyState should enable overflows on binary heap or such.
+enum KeyState {
+    Index(isize),
+    HoleExist,
+    AlreadyFilled
+}
 
 pub struct HOPTable<K, V, S = RandomState>
 where
@@ -19,7 +26,7 @@ where
     V: 'static + Clone + Send + Sync + std::fmt::Debug,
     S: BuildHasher,
 {
-    segments: Vec<Arc<AtomicBox<Bucket<K, V>>>>,
+    segments: Vec<Bucket<K, V>>,
     max_segments: usize,
     hash_builder: S,
 }
@@ -30,10 +37,11 @@ where
     V: Clone + Send + Sync + std::fmt::Debug,
 {
     pub fn new() -> Self {
-        Self::with_capacity(MAX_SEGMENTS + (1 << 8))
+        Self::with_capacity(MAX_SEGMENTS)
     }
 
     pub fn with_capacity(cap: usize) -> Self {
+        assert!((cap != 0) && ((cap & (cap - 1)) == 0), "Capacity should be power of 2");
         Self::with_capacity_and_hasher(cap, RandomState::new())
     }
 }
@@ -46,8 +54,7 @@ where
 {
     fn with_capacity_and_hasher(cap: usize, hasher: S) -> HOPTable<K, V, S> {
         Self {
-            // segments: vec![Arc::new(AtomicBox::new(Bucket::default())); cap],
-            segments: (0..cap).into_iter().map(|_| Arc::new(AtomicBox::new(Bucket::default()))).collect(),
+            segments: (0..cap + (1 << 8)).map(|_| Bucket::default()).collect(),
             max_segments: cap,
             hash_builder: hasher
         }
@@ -59,7 +66,7 @@ where
         hasher.finish() as usize & (self.max_segments - 1)
     }
 
-    fn seek_segment(&self, key: &K) -> Option<Arc<AtomicBox<Bucket<K, V>>>> {
+    fn seek_segment(&self, key: &K) -> Option<Bucket<K, V>> {
         let idx = self.key_index(key);
         if idx != !0 {
             Some(self.segments[idx as usize].clone())
@@ -68,57 +75,46 @@ where
         }
     }
 
-    #[inline]
     // FIXME: no pub
     pub(crate) fn key_index(&self, k: &K) -> isize {
         let hash = self.hash(k);
         let start_bucket = self.segments[hash].clone();
         let mut mask = 1;
+
         for i in (0..HOP_RANGE).into_iter() {
-            if (mask & start_bucket.get().hop_info
+            if (mask & start_bucket.hop_info
                 .load(Ordering::Acquire)) >= 1
             {
                 let check_bucket = self.segments[hash + i].clone();
-                let keyv = self.extract(check_bucket.get().key.get());
+                let keyv = self.extract(check_bucket.key.get());
                 if Some(k) == keyv.as_ref() {
                     return (hash + i) as isize;
                 }
+
             }
             mask = mask << 1;
         }
 
-        !0
+        HOLE_EXIST
     }
 
-
-    #[inline]
     fn atomic_remove(&self, k: &K) -> Arc<Option<V>> {
         let hash = self.hash(k);
         let start_bucket = self.segments[hash].clone();
 
         let remove_bucket_idx = self.key_index(k);
         let distance = remove_bucket_idx as usize - hash;
-        if remove_bucket_idx == !0 {
-            dbg!(distance);
-        }
 
         if remove_bucket_idx > !0 {
             let remove_bucket = self.segments[remove_bucket_idx as usize].clone();
-            let rc = remove_bucket.get().data.get();
-            remove_bucket.replace_with(|x| {
-                // std::sync::atomic::fence(Ordering::SeqCst);
-                let hinfo = x.hop_info.load(Ordering::SeqCst);
-                let b = Bucket::default();
-                b.hop_info.store(hinfo, Ordering::Relaxed);
-                b
-            });
-            // std::sync::atomic::fence(Ordering::SeqCst);
-            let st = start_bucket.get().hop_info.load(Ordering::Acquire);
-            start_bucket.get().hop_info.store(st & !(1 << distance), Ordering::SeqCst);
-            // println!("REMOVAL COMPLETE {:?} hash: {}", k, remove_bucket_idx);
+            let rc = remove_bucket.data.get();
+            remove_bucket.key.replace_with(|_| None);
+            remove_bucket.data.replace_with(|_| None);
+
+            let st = start_bucket.hop_info.load(Ordering::Acquire);
+            start_bucket.hop_info.store(st & !(1 << distance), Ordering::Relaxed);
             return rc;
         }
-        println!("REMOVAL NOT COMPLETE {:?} hash: {}, actual_hash: {}", k, remove_bucket_idx, hash);
 
         Arc::new(None)
     }
@@ -132,9 +128,8 @@ where
     #[inline]
     pub fn get(&self, k: &K) -> Option<V> {
         if let Some(seg) = self.seek_segment(k) {
-            let val = seg.get().data.get();
-            // println!("GET FOUND {:?} hash: {} some: {}", k, self.key_index(k), val.is_some());
-            return unsafe { &*Arc::downgrade(&val).as_ptr() }.clone();
+            let val = seg.data.get();
+            return self.extract(val).clone();
         }
 
         None
@@ -144,25 +139,24 @@ where
         unsafe { &*Arc::downgrade(&val).as_ptr() }
     }
 
-    #[inline]
     fn atomic_insert(&self,
-                     start_bucket: &Arc<AtomicBox<Bucket<K, V>>>,
-                     free_bucket: &Arc<AtomicBox<Bucket<K, V>>>,
+                     start_bucket: &Bucket<K, V>,
+                     free_bucket: &Bucket<K, V>,
                      k: &K,
                      v: &V,
                      free_distance: usize
-    )
+    ) -> bool
     {
-        if self.key_index(k) == !0 {
-            let sbhi = start_bucket.get().hop_info.load(Ordering::Acquire);
-            start_bucket.get().hop_info.store(sbhi | (1 << free_distance), Ordering::SeqCst);
-            free_bucket.get().data.replace_with(|_| Some(v.clone()));
-            free_bucket.get().key.replace_with(|_| Some(k.clone()));
-            // println!("INSERTION COMPLETE {:?} hash: {}", k, self.key_index(k));
+        if self.key_index(k) == HOLE_EXIST {
+            let sbhi = start_bucket.hop_info.load(Ordering::Acquire);
+            start_bucket.hop_info.store(sbhi | (1 << free_distance), Ordering::Release);
+            free_bucket.data.replace_with(|_| Some(v.clone()));
+            free_bucket.key.replace_with(|_| Some(k.clone()));
+            return true;
         }
-        // } else {
-        //     println!("SHIT HITS HERE");
-        // }
+
+        #[cold]
+        false
     }
 
     #[inline]
@@ -174,40 +168,35 @@ where
         self.new_insert(k, v)
     }
 
-    #[inline]
     fn new_insert(&self, k: K, v: V) -> Result<Arc<Option<V>>> {
         let mut val = 1;
 
         let hash = self.hash(&k);
-        // dbg!(hash);
         let start_bucket = self.segments[hash].clone();
-        // let start_bucket = Arc::new(unsafe { &*Arc::downgrade(&self.segments[free_bucket_idx]).as_ptr() }.clone());
 
         let mut free_bucket_idx = hash;
         let mut free_bucket = self.segments[free_bucket_idx].clone();
         let mut free_distance = 0;
 
         for _ in (free_distance..ADD_RANGE).into_iter() {
-            // dbg!(free_bucket.get().data.get());
-            if free_bucket.get().key.get().is_none() {
-                // dbg!("breaking");
+            if free_bucket.key.get().is_none() {
                 break;
             }
+            free_distance += 1;
             free_bucket_idx += 1;
-            // dbg!(free_bucket_idx);
+
             free_bucket = self.segments[free_bucket_idx].clone();
-            // let x = Arc::new(unsafe { &*Arc::downgrade(&self.segments[free_bucket_idx]).as_ptr() }.clone());
         }
 
         if free_distance < ADD_RANGE {
             while let true = 0 != val {
                 if free_distance < HOP_RANGE {
-                    self.atomic_insert(&start_bucket, &free_bucket, &k,&v, free_distance);
-                    // TODO: Fallback Lock
-                    // dbg!("INSERTED");
-                    return Ok(Arc::new(Some(v)));
+                    if self.atomic_insert(&start_bucket, &free_bucket, &k,&v, free_distance) {
+                        return Ok(Arc::new(Some(v)));
+                    } else {
+                        return Ok(Arc::new(None));
+                    }
                 } else {
-                    dbg!("RABBIT HOLE");
                     let closest_binfo = self.find_closer_bucket(free_bucket_idx, free_distance, val);
                     free_distance = closest_binfo[0];
                     val = closest_binfo[1];
@@ -220,7 +209,6 @@ where
         Ok(Arc::new(None))
     }
 
-    #[inline]
     fn find_closer_bucket(&self,
                           free_bucket_index: usize,
                           mut free_distance: usize,
@@ -230,7 +218,7 @@ where
         let mut move_bucket_index = free_bucket_index - (HOP_RANGE - 1);
         let mut move_bucket = self.segments[move_bucket_index].clone();
         for free_dist in (1..HOP_RANGE).rev() {
-            let start_hop_info = move_bucket.get().hop_info.load(Ordering::Acquire);
+            let start_hop_info = move_bucket.hop_info.load(Ordering::Acquire);
             let mut move_free_distance: isize = !0;
             let mut mask = 1;
             for i in (0..free_dist).into_iter() {
@@ -242,35 +230,24 @@ where
             }
 
             if !0 != move_free_distance {
-                if start_hop_info == move_bucket.get().hop_info.load(Ordering::Acquire) {
+                if start_hop_info == move_bucket.hop_info.load(Ordering::Acquire) {
                     let new_free_bucket_index = move_bucket_index + move_free_distance as usize;
                     let new_free_bucket = self.segments[new_free_bucket_index].clone();
-                    let mbhi = move_bucket.get().hop_info.load(Ordering::Acquire);
-                    // Updates move_bucket's hop_info, to indicate the newly inserted bucket
-                    move_bucket.get().hop_info.store(mbhi | (1 << free_dist), Ordering::SeqCst);
-                    self.segments[free_bucket_index].replace_with(|ex| {
-                        let new = new_free_bucket.get();
-                        // TODO: No need under some circumstances
-                        let ex_hop_info = ex.hop_info.load(Ordering::Acquire);
-                        let new_key: Arc<Option<K>> = new.key.get();
-                        let new_data: Arc<Option<V>> = new.data.get();
-
-                        let inj = Bucket::default();
-                        inj.key.replace_with(|_| {
-                            unsafe { &*Arc::downgrade(&new_key).as_ptr() }.clone()
-                        });
-                        inj.data.replace_with(|_| {
-                            unsafe { &*Arc::downgrade(&new_data).as_ptr() }.clone()
-                        });
-                        inj.hop_info.store(ex_hop_info, Ordering::SeqCst);
-                        inj
+                    let mbhi = move_bucket.hop_info.load(Ordering::Acquire);
+                    // Updates move bucket's hop data, to indicate the newly inserted bucket
+                    move_bucket.hop_info.store(mbhi | (1 << free_dist), Ordering::SeqCst);
+                    self.segments[free_bucket_index].data.replace_with(|_ex| {
+                        self.extract(new_free_bucket.data.get()).clone()
+                    });
+                    self.segments[free_bucket_index].key.replace_with(|_ex| {
+                        self.extract(new_free_bucket.key.get()).clone()
                     });
 
-                    new_free_bucket.get().key.replace_with(|_| None);
-					          new_free_bucket.get().data.replace_with(|_| None);
+                    new_free_bucket.key.replace_with(|_| None);
+					          new_free_bucket.data.replace_with(|_| None);
 
-                    // Updates move_bucket's hop_info, to indicate the deleted bucket
-                    move_bucket.get().hop_info.store(move_bucket.get().hop_info.load(Ordering::SeqCst) & !(1 << move_free_distance), Ordering::SeqCst);
+                    // Updates move bucket's hop data, to indicate the deleted bucket
+                    move_bucket.hop_info.store(move_bucket.hop_info.load(Ordering::SeqCst) & !(1 << move_free_distance), Ordering::SeqCst);
                     free_distance = free_distance - free_dist + move_free_distance as usize;
                     result[0] = free_distance;
 					          result[1] = val;
@@ -282,7 +259,7 @@ where
 			      move_bucket = self.segments[move_bucket_index].clone();
         }
 
-        self.segments[free_bucket_index].get().key.replace_with(|_| None);
+        self.segments[free_bucket_index].key.replace_with(|_| None);
 		    result[0] = 0;
 		    result[1] = 0;
 		    result[2] = 0;
@@ -290,23 +267,24 @@ where
 		    return result;
     }
 
-    pub fn trial(&self) {
+    fn trial(&self) {
         let mut count = 0;
         for i in (0..self.max_segments).into_iter() {
             let temp = self.segments[i].clone();
-            if temp.get().key.get().is_some() {
+            if temp.key.get().is_some() {
                 count += 1;
             }
         }
-        // println!("Items in Hash = {}", count);
-        // println!("===========================");
+        println!("Items in Hash = {}", count);
+        println!("===========================");
     }
 }
 
+#[derive(Clone)]
 struct Bucket<K, V> {
-    hop_info: AtomicU64,
-    key: AtomicBox<Option<K>>,
-    data: AtomicBox<Option<V>>,
+    hop_info: Arc<AtomicU64>,
+    key: Arc<AtomicBox<Option<K>>>,
+    data: Arc<AtomicBox<Option<V>>>,
 }
 
 impl<K, V> Bucket<K, V> {
@@ -319,9 +297,9 @@ impl<K, V> Bucket<K, V> {
 impl<K, V> Default for Bucket<K, V> {
     fn default() -> Self {
         Bucket {
-            hop_info: AtomicU64::default(),
-            key: AtomicBox::new(None),
-            data: AtomicBox::new(None)
+            hop_info: Arc::new(AtomicU64::default()),
+            key: Arc::new(AtomicBox::new(None)),
+            data: Arc::new(AtomicBox::new(None))
         }
     }
 }
@@ -351,6 +329,26 @@ mod hoptable_tests {
 
         hoptable.trial();
         assert_eq!(hoptable.get(&"Saudade4".to_string()), Some(321321));
+    }
+
+    #[test]
+    fn hoptable_removes() {
+        let hoptable: HOPTable<String, u64> = HOPTable::new();
+        hoptable.insert("Saudade0".to_string(), 1);
+        assert_eq!(hoptable.get(&"Saudade0".to_string()), Some(1));
+
+        hoptable.remove(&"Saudade0".to_string());
+        assert_eq!(hoptable.get(&"Saudade0".to_string()), None);
+    }
+
+    #[test]
+    fn hoptable_upsert() {
+        let hoptable: HOPTable<String, u64> = HOPTable::new();
+        hoptable.insert("Saudade0".to_string(), 1);
+        assert_eq!(hoptable.get(&"Saudade0".to_string()), Some(1));
+
+        hoptable.insert("Saudade0".to_string(), 2);
+        assert_eq!(hoptable.get(&"Saudade0".to_string()), Some(2));
     }
 
     #[test]

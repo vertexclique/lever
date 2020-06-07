@@ -1,6 +1,7 @@
 // Behind the feature gates
 #![cfg_attr(feature = "hw", feature(stdsimd))]
-#![feature(llvm_asm)]
+#![cfg_attr(feature = "hw", feature(llvm_asm))]
+
 // FIXME: Baking still
 #![allow(dead_code)]
 #![allow(unused_imports)]
@@ -32,6 +33,9 @@ pub mod sync;
 pub mod table;
 /// Transactional primitives and transaction management
 pub mod txn;
+
+/// Allocation helpers
+mod alloc;
 
 /// Hardware transactional memory
 mod htm;
