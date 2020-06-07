@@ -45,28 +45,28 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: check
-          args: --all --benches --bins --examples --tests
+          args: --features nightly --all --benches --bins --examples --tests
 
       - name: check stable
         if: matrix.version == 'stable'
         uses: actions-rs/cargo@v1
         with:
           command: check
-          args: --no-default-features --all --bins --examples --tests
+          args: --all --bins --examples --tests
 
       - name: tests nightly
         if: matrix.version == 'nightly'
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --all
+          args: --features nightly --all
 
       - name: tests stable
         if: matrix.version == 'stable'
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --no-default-features --all
+          args: --all
 
   check_fmt_and_docs:
     name: Checking fmt and docs

@@ -23,6 +23,12 @@ enum KeyState {
     AlreadyFilled,
 }
 
+///
+/// Lever Neighborhood based cache-oblivious concurrent table.
+///
+/// Designed for fast access under heavy contention.
+/// Best for related lookups in the known key space.
+/// Also best for buffer management.
 pub struct HOPTable<K, V, S = RandomState>
 where
     K: 'static + PartialEq + Eq + Hash + Clone + Send + Sync + std::fmt::Debug,
