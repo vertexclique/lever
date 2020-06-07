@@ -16,15 +16,14 @@ pub(crate) fn bucket_allocate_cont<T>(buckets: usize) -> Result<Vec<T>> {
 
 pub(crate) fn bucket_alloc<T>(init_cap: usize) -> Vec<T>
 where
-    T: Default
+    T: Default,
 {
     let data = Layout::array::<T>(init_cap).unwrap();
     let p = unsafe { std::alloc::alloc_zeroed(data) as *mut T };
     unsafe {
-        (0..init_cap)
-            .for_each(|i| {
-                std::ptr::write(p.offset(i as isize), T::default());
-            });
+        (0..init_cap).for_each(|i| {
+            std::ptr::write(p.offset(i as isize), T::default());
+        });
         Vec::from_raw_parts(p, init_cap, init_cap)
     }
 }

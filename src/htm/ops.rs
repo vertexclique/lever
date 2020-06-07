@@ -113,7 +113,7 @@ mod lever_hwtxn_test {
         let x = AtomicUsize::new(100);
         std::thread::spawn(move || {
             let hwtxn = HwTxn();
-            let data = hwtxn.begin(|_htm| x.fetch_add(1, Ordering::Relaxed));
+            let _data = hwtxn.begin(|_htm| x.fetch_add(1, Ordering::Relaxed));
         });
     }
 
@@ -154,9 +154,9 @@ mod lever_hwtxn_test {
             swallow(&mut data[i * CACHE_LINE_SIZE]);
         }
         for max in 0..end {
-            let mut fail_count = 0;
+            let _fail_count = 0;
             let hwtxn = HwTxn();
-            let data = hwtxn.begin(|_htm| {
+            let _data = hwtxn.begin(|_htm| {
                 for i in 0..max {
                     let elem = unsafe { data.get_unchecked_mut(i * CACHE_LINE_SIZE) };
                     *elem = elem.wrapping_add(1);

@@ -1,11 +1,14 @@
 use crate::sync::atomics::AtomicBox;
+use anyhow::*;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
-use anyhow::*;
 
 use std::hash::Hash;
 use std::hash::{BuildHasher, Hasher};
-use std::{alloc::Layout, collections::hash_map::{Iter, Keys, RandomState}};
+use std::{
+    alloc::Layout,
+    collections::hash_map::{Iter, Keys, RandomState},
+};
 
 const HOP_RANGE: usize = 1 << 5;
 const ADD_RANGE: usize = 1 << 8;
@@ -17,7 +20,7 @@ const ALREADY_FILLED: isize = -2;
 enum KeyState {
     Index(isize),
     HoleExist,
-    AlreadyFilled
+    AlreadyFilled,
 }
 
 pub struct HOPTable<K, V, S = RandomState>
@@ -41,7 +44,10 @@ where
     }
 
     pub fn with_capacity(cap: usize) -> Self {
-        assert!((cap != 0) && ((cap & (cap - 1)) == 0), "Capacity should be power of 2");
+        assert!(
+            (cap != 0) && ((cap & (cap - 1)) == 0),
+            "Capacity should be power of 2"
+        );
         Self::with_capacity_and_hasher(cap, RandomState::new())
     }
 }
@@ -56,7 +62,7 @@ where
         Self {
             segments: (0..cap + (1 << 8)).map(|_| Bucket::default()).collect(),
             max_segments: cap,
-            hash_builder: hasher
+            hash_builder: hasher,
         }
     }
 
@@ -82,15 +88,12 @@ where
         let mut mask = 1;
 
         for i in (0..HOP_RANGE).into_iter() {
-            if (mask & start_bucket.hop_info
-                .load(Ordering::Acquire)) >= 1
-            {
+            if (mask & start_bucket.hop_info.load(Ordering::Acquire)) >= 1 {
                 let check_bucket = self.segments[hash + i].clone();
                 let keyv = self.extract(check_bucket.key.get());
                 if Some(k) == keyv.as_ref() {
                     return (hash + i) as isize;
                 }
-
             }
             mask = mask << 1;
         }
@@ -112,7 +115,9 @@ where
             remove_bucket.data.replace_with(|_| None);
 
             let st = start_bucket.hop_info.load(Ordering::Acquire);
-            start_bucket.hop_info.store(st & !(1 << distance), Ordering::Relaxed);
+            start_bucket
+                .hop_info
+                .store(st & !(1 << distance), Ordering::Relaxed);
             return rc;
         }
 
@@ -139,17 +144,19 @@ where
         unsafe { &*Arc::downgrade(&val).as_ptr() }
     }
 
-    fn atomic_insert(&self,
-                     start_bucket: &Bucket<K, V>,
-                     free_bucket: &Bucket<K, V>,
-                     k: &K,
-                     v: &V,
-                     free_distance: usize
-    ) -> bool
-    {
+    fn atomic_insert(
+        &self,
+        start_bucket: &Bucket<K, V>,
+        free_bucket: &Bucket<K, V>,
+        k: &K,
+        v: &V,
+        free_distance: usize,
+    ) -> bool {
         if self.key_index(k) == HOLE_EXIST {
             let sbhi = start_bucket.hop_info.load(Ordering::Acquire);
-            start_bucket.hop_info.store(sbhi | (1 << free_distance), Ordering::Release);
+            start_bucket
+                .hop_info
+                .store(sbhi | (1 << free_distance), Ordering::Release);
             free_bucket.data.replace_with(|_| Some(v.clone()));
             free_bucket.key.replace_with(|_| Some(k.clone()));
             return true;
@@ -191,13 +198,14 @@ where
         if free_distance < ADD_RANGE {
             while let true = 0 != val {
                 if free_distance < HOP_RANGE {
-                    if self.atomic_insert(&start_bucket, &free_bucket, &k,&v, free_distance) {
+                    if self.atomic_insert(&start_bucket, &free_bucket, &k, &v, free_distance) {
                         return Ok(Arc::new(Some(v)));
                     } else {
                         return Ok(Arc::new(None));
                     }
                 } else {
-                    let closest_binfo = self.find_closer_bucket(free_bucket_idx, free_distance, val);
+                    let closest_binfo =
+                        self.find_closer_bucket(free_bucket_idx, free_distance, val);
                     free_distance = closest_binfo[0];
                     val = closest_binfo[1];
                     free_bucket_idx = closest_binfo[2];
@@ -209,10 +217,11 @@ where
         Ok(Arc::new(None))
     }
 
-    fn find_closer_bucket(&self,
-                          free_bucket_index: usize,
-                          mut free_distance: usize,
-                          val: usize
+    fn find_closer_bucket(
+        &self,
+        free_bucket_index: usize,
+        mut free_distance: usize,
+        val: usize,
     ) -> [usize; 3] {
         let mut result = [0; 3];
         let mut move_bucket_index = free_bucket_index - (HOP_RANGE - 1);
@@ -223,9 +232,9 @@ where
             let mut mask = 1;
             for i in (0..free_dist).into_iter() {
                 if (mask & start_hop_info) >= 1 {
-					          move_free_distance = i as isize;
-					          break;
-				        }
+                    move_free_distance = i as isize;
+                    break;
+                }
                 mask = mask << 1;
             }
 
@@ -235,36 +244,41 @@ where
                     let new_free_bucket = self.segments[new_free_bucket_index].clone();
                     let mbhi = move_bucket.hop_info.load(Ordering::Acquire);
                     // Updates move bucket's hop data, to indicate the newly inserted bucket
-                    move_bucket.hop_info.store(mbhi | (1 << free_dist), Ordering::SeqCst);
-                    self.segments[free_bucket_index].data.replace_with(|_ex| {
-                        self.extract(new_free_bucket.data.get()).clone()
-                    });
-                    self.segments[free_bucket_index].key.replace_with(|_ex| {
-                        self.extract(new_free_bucket.key.get()).clone()
-                    });
+                    move_bucket
+                        .hop_info
+                        .store(mbhi | (1 << free_dist), Ordering::SeqCst);
+                    self.segments[free_bucket_index]
+                        .data
+                        .replace_with(|_ex| self.extract(new_free_bucket.data.get()).clone());
+                    self.segments[free_bucket_index]
+                        .key
+                        .replace_with(|_ex| self.extract(new_free_bucket.key.get()).clone());
 
                     new_free_bucket.key.replace_with(|_| None);
-					          new_free_bucket.data.replace_with(|_| None);
+                    new_free_bucket.data.replace_with(|_| None);
 
                     // Updates move bucket's hop data, to indicate the deleted bucket
-                    move_bucket.hop_info.store(move_bucket.hop_info.load(Ordering::SeqCst) & !(1 << move_free_distance), Ordering::SeqCst);
+                    move_bucket.hop_info.store(
+                        move_bucket.hop_info.load(Ordering::SeqCst) & !(1 << move_free_distance),
+                        Ordering::SeqCst,
+                    );
                     free_distance = free_distance - free_dist + move_free_distance as usize;
                     result[0] = free_distance;
-					          result[1] = val;
-					          result[2] = new_free_bucket_index;
+                    result[1] = val;
+                    result[2] = new_free_bucket_index;
                     return result;
                 }
             }
             move_bucket_index = move_bucket_index + 1;
-			      move_bucket = self.segments[move_bucket_index].clone();
+            move_bucket = self.segments[move_bucket_index].clone();
         }
 
         self.segments[free_bucket_index].key.replace_with(|_| None);
-		    result[0] = 0;
-		    result[1] = 0;
-		    result[2] = 0;
+        result[0] = 0;
+        result[1] = 0;
+        result[2] = 0;
 
-		    return result;
+        return result;
     }
 
     fn trial(&self) {
@@ -299,12 +313,10 @@ impl<K, V> Default for Bucket<K, V> {
         Bucket {
             hop_info: Arc::new(AtomicU64::default()),
             key: Arc::new(AtomicBox::new(None)),
-            data: Arc::new(AtomicBox::new(None))
+            data: Arc::new(AtomicBox::new(None)),
         }
     }
 }
-
-
 
 #[cfg(test)]
 mod hoptable_tests {
