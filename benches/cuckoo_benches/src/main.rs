@@ -177,24 +177,4 @@ fn main() {
     for n in 1..=num_threads {
         Workload::new(n, Mix::read_heavy()).run::<HOPBenchTable<u64>>();
     }
-
-
-    /////////////////////////
-    //// Timing results
-
-//     =========== RwLock =============
-// Jun 07 01:57:44.021  INFO benchmark{mix=Mix { read: 94, insert: 2, remove: 1, update: 3, upsert: 0 } threads=10}: bustle: generating operation mix
-// Jun 07 01:57:44.023  INFO benchmark{mix=Mix { read: 94, insert: 2, remove: 1, update: 3, upsert: 0 } threads=10}: bustle: generating key space
-// Jun 07 01:57:44.459  INFO benchmark{mix=Mix { read: 94, insert: 2, remove: 1, update: 3, upsert: 0 } threads=10}: bustle: constructing initial table
-// Jun 07 01:57:44.495  INFO benchmark{mix=Mix { read: 94, insert: 2, remove: 1, update: 3, upsert: 0 } threads=10}: bustle: start workload mix
-// Jun 07 01:58:08.971  INFO benchmark{mix=Mix { read: 94, insert: 2, remove: 1, update: 3, upsert: 0 } threads=10}: bustle: workload mix finished took=24.475067738s ops=25165824 avg=971ns
-// 25165824 operations across 10 thread(s) in 24.475067738s; time/op = 971ns
-// =========== LOTable =============
-// =========== HOPTable =============
-// Jun 07 01:58:09.084  INFO benchmark{mix=Mix { read: 94, insert: 2, remove: 1, update: 3, upsert: 0 } threads=10}: bustle: generating operation mix
-// Jun 07 01:58:09.084  INFO benchmark{mix=Mix { read: 94, insert: 2, remove: 1, update: 3, upsert: 0 } threads=10}: bustle: generating key space
-// Jun 07 01:58:09.575  INFO benchmark{mix=Mix { read: 94, insert: 2, remove: 1, update: 3, upsert: 0 } threads=10}: bustle: constructing initial table
-// Jun 07 01:58:36.846  INFO benchmark{mix=Mix { read: 94, insert: 2, remove: 1, update: 3, upsert: 0 } threads=10}: bustle: start workload mix
-// Jun 07 01:58:52.473  INFO benchmark{mix=Mix { read: 94, insert: 2, remove: 1, update: 3, upsert: 0 } threads=10}: bustle: workload mix finished took=15.625945269s ops=25165824 avg=620ns
-// 25165824 operations across 10 thread(s) in 15.625945269s; time/op = 620ns
 }
