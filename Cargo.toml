@@ -29,7 +29,8 @@ exclude = [
 ]
 
 [features]
-default = ["hw"]
+default = []
+nightly = ["hw"]
 hw = []
 
 [dependencies]

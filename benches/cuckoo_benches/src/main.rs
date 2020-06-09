@@ -103,15 +103,78 @@ impl<K> CollectionHandle for LOBenchTable<K>
     }
 }
 
+
+#[derive(Clone)]
+struct HOPBenchTable<K>(std::sync::Arc<HOPTable<K, u64>>)
+where K: 'static + Send + Sync + Clone + Hash + Eq + Ord + std::fmt::Debug;
+
+impl<K> Collection for HOPBenchTable<K>
+    where
+        K: Send + Sync + From<u64> + Copy + 'static + std::hash::Hash + Eq + std::fmt::Debug + Ord,
+{
+    type Handle = Self;
+
+    fn with_capacity(capacity: usize) -> Self {
+        Self(std::sync::Arc::new(HOPTable::with_capacity(capacity)))
+    }
+
+    fn pin(&self) -> Self::Handle {
+        self.clone()
+    }
+}
+
+impl<K> CollectionHandle for HOPBenchTable<K>
+    where
+        K: Send + Sync + From<u64> + Copy + 'static + std::hash::Hash + Eq + std::fmt::Debug + Ord,
+{
+    type Key = K;
+
+    fn get(&mut self, key: &Self::Key) -> bool {
+        self.0.get(key).is_some()
+    }
+
+    fn insert(&mut self, key: &Self::Key) -> bool {
+        self.0.insert(*key, 1).map(|x| x.is_some()).unwrap()
+    }
+
+    fn remove(&mut self, key: &Self::Key) -> bool {
+        self.0.remove(key).map(|x| x.is_some()).unwrap()
+    }
+
+    fn update(&mut self, key: &Self::Key) -> bool {
+        if let Some(_x) = self.0.get(key) {
+            let _ = self.0.insert(*key, 1);
+            true
+        } else {
+            false
+        }
+    }
+}
+
+
 fn main() {
     tracing_subscriber::fmt::init();
-    // for n in 1..=num_cpus::get() {
-    //     Workload::new(n, Mix::read_heavy()).run::<RwLockTable<u64>>();
+
+    // let num_threads = num_cpus::get();
+    let num_threads = 8;
+
+    println!("=========== RwLock =============");
+
+    // Workload::new(10, Mix::read_heavy()).run::<RwLockTable<u64>>();
+    for n in 1..=num_threads {
+        Workload::new(n, Mix::read_heavy()).run::<RwLockTable<u64>>();
+    }
+
+    println!("=========== LOTable =============");
+
+    // for n in 1..=num_threads {
+    //     Workload::new(n, Mix::read_heavy()).run::<LOBenchTable<u64>>();
     // }
 
-    println!("========================");
+    println!("=========== HOPTable =============");
 
-    // for n in 1..=num_cpus::get() {
-        Workload::new(3, Mix::read_heavy()).run::<LOBenchTable<u64>>();
-    // }
+    // Workload::new(8, Mix::read_heavy()).run::<HOPBenchTable<u64>>(); 
+    for n in 1..=num_threads {
+        Workload::new(n, Mix::read_heavy()).run::<HOPBenchTable<u64>>();
+    }
 }

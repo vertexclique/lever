@@ -26,6 +26,14 @@ transactional in-memory systems.
 
 Lever is alpha stage software.
 
+# Sync
+Synchronization primitives which can allow users to write concurrent task structures. Lever don't have runtime or async code.
+Whole library is based on top of POSIX threads and agnostic IO. That said, these are the few structures which can be used in sync package:
+
+* Lock-free ReentrantRwLock
+* Spinlocks
+* Fair locks
+
 # Tables
 
 Lever's table system can be can be used like this:
@@ -95,8 +103,9 @@ Workloads are separated in benchmarks like:
 * 80-20 R/RW mixed from concurrent 8 threads
 * Pure writes from concurrent 8 threads
 
-At this time of writing pure rust benchmarks(without any optimization and tuning) shows that 
-generic throughput sifts through ~54 Kelem/s for most of the cases.
+Lever is performant. E.g. Lever's table implementations are doing 25+ million operations under 80ns.
+Whole thing is used in production and continuously improved. This crate consolidates plenty of primitives, tools, structures and such.
+You can try benchmarking yourself. Benchmarking code is included.
 
 ## Notes for the user
 
