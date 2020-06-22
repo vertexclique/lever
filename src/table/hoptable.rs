@@ -31,8 +31,8 @@ enum KeyState {
 /// Also best for buffer management.
 pub struct HOPTable<K, V, S = RandomState>
 where
-    K: 'static + PartialEq + Eq + Hash + Clone + Send + Sync + std::fmt::Debug,
-    V: 'static + Clone + Send + Sync + std::fmt::Debug,
+    K: 'static + PartialEq + Eq + Hash + Clone + Send + Sync,
+    V: 'static + Clone + Send + Sync,
     S: BuildHasher,
 {
     segments: Vec<Bucket<K, V>>,
@@ -42,8 +42,8 @@ where
 
 impl<K, V> HOPTable<K, V, RandomState>
 where
-    K: PartialEq + Eq + Hash + Clone + Send + Sync + std::fmt::Debug,
-    V: Clone + Send + Sync + std::fmt::Debug,
+    K: PartialEq + Eq + Hash + Clone + Send + Sync,
+    V: Clone + Send + Sync,
 {
     pub fn new() -> Self {
         Self::with_capacity(MAX_SEGMENTS)
@@ -60,8 +60,8 @@ where
 
 impl<K, V, S> HOPTable<K, V, S>
 where
-    K: PartialEq + Eq + Hash + Clone + Send + Sync + std::fmt::Debug,
-    V: Clone + Send + Sync + std::fmt::Debug,
+    K: PartialEq + Eq + Hash + Clone + Send + Sync,
+    V: Clone + Send + Sync,
     S: BuildHasher,
 {
     fn with_capacity_and_hasher(cap: usize, hasher: S) -> HOPTable<K, V, S> {
