@@ -327,6 +327,7 @@ mod lotable_tests {
     fn iter_generator() {
         let lotable: LOTable<String, u64> = LOTable::new();
         lotable.insert("Saudade0".to_string(), 123123);
+        lotable.insert("Saudade0".to_string(), 123);
         lotable.insert("Saudade1".to_string(), 123123);
         lotable.insert("Saudade2".to_string(), 123123);
         lotable.insert("Saudade3".to_string(), 123123);
@@ -342,5 +343,7 @@ mod lotable_tests {
 
         let res: Vec<(String, u64)> = lotable.iter().collect();
         assert_eq!(res.len(), 12);
+
+        assert_eq!(lotable.get(&"Saudade0".to_string()), Some(123));
     }
 }

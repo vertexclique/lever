@@ -7,13 +7,14 @@ use std::sync::Arc;
 
 /// AtomicBox<T> is a safe wrapper around AtomicPtr<T>
 #[derive(Debug)]
-pub(crate) struct AtomicBox<T: Sized> {
+pub struct AtomicBox<T: Sized> {
     ptr: AtomicPtr<T>,
 }
 
 impl<T: Sized> AtomicBox<T> {
+    ///
     /// Allocates a new AtomicBox containing the given value
-    pub(crate) fn new(value: T) -> AtomicBox<T> {
+    pub fn new(value: T) -> AtomicBox<T> {
         AtomicBox {
             ptr: AtomicPtr::new(AtomicBox::alloc_from(value)),
         }
@@ -49,7 +50,9 @@ impl<T: Sized> AtomicBox<T> {
         self.ptr.store(ptr, Ordering::Release);
     }
 
-    pub(crate) fn get(&self) -> Arc<T> {
+    ///
+    /// Get inner value
+    pub fn get(&self) -> Arc<T> {
         let val = self.take();
         let copy = Arc::clone(&val);
         let ptr = Arc::into_raw(val) as *mut T;
@@ -58,19 +61,24 @@ impl<T: Sized> AtomicBox<T> {
         copy
     }
 
-    pub(crate) fn extract_mut_ptr(&self) -> *mut T {
+    ///
+    /// Extract mutable pointer of the contained value
+    pub fn extract_mut_ptr(&mut self) -> *mut T {
         let x = self.get();
         Arc::into_raw(x) as *mut T
     }
 
-    pub(crate) fn extract(&self) -> Result<Arc<T>> {
+    ///
+    /// If possible, extract inner value into unique Arc
+    pub fn extract(&self) -> Result<Arc<T>> {
         let au: ArcUnique<Arc<T>> = ArcUnique::try_from(self.get())?;
         Ok(au.deref().clone())
     }
 
+    ///
     /// Atomically replace the inner value with the result of applying the
     /// given closure to the current value
-    pub(crate) fn replace_with<F>(&self, f: F)
+    pub fn replace_with<F>(&self, f: F)
     where
         F: Fn(Arc<T>) -> T,
     {
