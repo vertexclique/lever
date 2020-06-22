@@ -2,7 +2,8 @@
 pub mod ifaces;
 
 pub(crate) mod arcunique;
-pub(crate) mod atomics;
+/// Atomic heap location
+pub mod atomics;
 
 /// Tas based reentrant RW lock implementation
 pub mod rerwlock;
