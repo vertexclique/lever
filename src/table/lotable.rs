@@ -162,44 +162,67 @@ where
     }
 
     #[inline]
-    pub fn clear(&mut self) {
-        self.latch.clear();
-        // TODO: Shrink to fit as a optimized table.
+    pub fn clear(&self) {
+        self.latch.iter().for_each(move |b| {
+            self.txn.begin(|t| {
+                let container = t.read(&b);
+                container.replace_with(|r| Container(HashMap::default()));
+            });
+        });
+        // TODO: (vcq): Shrink to fit as a optimized table.
         // self.latch.shrink_to_fit();
     }
 
     pub fn keys<'table>(&'table self) -> impl Iterator<Item = K> + 'table {
-        self.latch.iter().flat_map(move |b| {
-            self.txn
-                .begin(|t| {
-                    let container = t.read(&b);
-                    container
-                        .get()
-                        .0
-                        .keys()
-                        .into_iter()
-                        .map(Clone::clone)
-                        .collect::<Vec<K>>()
-                })
-                .unwrap_or(Vec::new())
-        })
+        let buckets: Vec<K> = self
+            .latch
+            .first()
+            .iter()
+            .flat_map(move |b| {
+                self.txn
+                    .begin(|t| {
+                        let container = t.read(&b);
+                        let cont = container
+                            .get()
+                            .0
+                            .keys()
+                            .into_iter()
+                            .map(Clone::clone)
+                            .collect::<Vec<K>>();
+                        dbg!(cont.len());
+                        cont
+                    })
+                    .unwrap_or(vec![])
+            })
+            .collect();
+
+        buckets.into_iter()
     }
 
     pub fn values<'table>(&'table self) -> impl Iterator<Item = V> + 'table {
-        self.latch.iter().flat_map(move |b| {
-            self.txn
-                .begin(|t| {
-                    let container = t.read(&b);
-                    container
-                        .get()
-                        .0
-                        .values()
-                        .into_iter()
-                        .map(Clone::clone)
-                        .collect::<Vec<V>>()
-                })
-                .unwrap_or(Vec::new())
-        })
+        let buckets: Vec<V> = self
+            .latch
+            .first()
+            .iter()
+            .flat_map(move |b| {
+                self.txn
+                    .begin(|t| {
+                        let container = t.read(&b);
+                        let cont = container
+                            .get()
+                            .0
+                            .values()
+                            .into_iter()
+                            .map(Clone::clone)
+                            .collect::<Vec<V>>();
+                        dbg!(cont.len());
+                        cont
+                    })
+                    .unwrap_or(vec![])
+            })
+            .collect();
+
+        buckets.into_iter()
     }
 
     fn hash(&self, key: &K) -> usize {
@@ -345,5 +368,55 @@ mod lotable_tests {
         assert_eq!(res.len(), 12);
 
         assert_eq!(lotable.get(&"Saudade0".to_string()), Some(123));
+    }
+
+    #[test]
+    fn values_iter_generator() {
+        let mut lotable: LOTable<String, u64> = LOTable::new();
+
+        (0..100).into_iter().for_each(|i| {
+            lotable.insert("Saudade0".to_string(), 123123);
+            lotable.insert("Saudade0".to_string(), 123);
+            lotable.insert("Saudade1".to_string(), 123123);
+            lotable.insert("Saudade2".to_string(), 123123);
+            lotable.insert("Saudade3".to_string(), 123123);
+            lotable.insert("Saudade4".to_string(), 123123);
+            lotable.insert("Saudade5".to_string(), 123123);
+
+            lotable.insert("123123".to_string(), 123123);
+            lotable.insert("1231231".to_string(), 123123);
+            lotable.insert("1231232".to_string(), 123123);
+            lotable.insert("1231233".to_string(), 123123);
+            lotable.insert("1231234".to_string(), 123123);
+            lotable.insert("1231235".to_string(), 123123);
+
+            let res: Vec<u64> = lotable.values().into_iter().collect();
+            // dbg!(&res);
+            assert_eq!(res.len(), 12);
+        });
+
+        lotable.clear();
+        let res: Vec<u64> = lotable.values().into_iter().collect();
+        assert_eq!(res.len(), 0);
+
+        (0..1_000).into_iter().for_each(|i| {
+            lotable.insert(format!("{}", i), i as u64);
+
+            let resvals: Vec<u64> = lotable.values().into_iter().collect();
+            // dbg!(&resvals);
+            assert_eq!(resvals.len(), i + 1);
+        });
+
+        lotable.clear();
+        let res: Vec<u64> = lotable.values().into_iter().collect();
+        assert_eq!(res.len(), 0);
+
+        (0..1_000).into_iter().for_each(|i| {
+            lotable.insert(format!("{}", i), i as u64);
+
+            let reskeys: Vec<String> = lotable.keys().into_iter().collect();
+            // dbg!(&reskeys);
+            assert_eq!(reskeys.len(), i + 1);
+        });
     }
 }
