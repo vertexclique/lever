@@ -166,7 +166,7 @@ where
         self.latch.iter().for_each(move |b| {
             self.txn.begin(|t| {
                 let container = t.read(&b);
-                container.replace_with(|r| Container(HashMap::default()));
+                container.replace_with(|_r| Container(HashMap::default()));
             });
         });
         // TODO: (vcq): Shrink to fit as a optimized table.
@@ -182,15 +182,13 @@ where
                 self.txn
                     .begin(|t| {
                         let container = t.read(&b);
-                        let cont = container
+                        container
                             .get()
                             .0
                             .keys()
                             .into_iter()
                             .map(Clone::clone)
-                            .collect::<Vec<K>>();
-                        dbg!(cont.len());
-                        cont
+                            .collect::<Vec<K>>()
                     })
                     .unwrap_or(vec![])
             })
@@ -208,15 +206,13 @@ where
                 self.txn
                     .begin(|t| {
                         let container = t.read(&b);
-                        let cont = container
+                        container
                             .get()
                             .0
                             .values()
                             .into_iter()
                             .map(Clone::clone)
-                            .collect::<Vec<V>>();
-                        dbg!(cont.len());
-                        cont
+                            .collect::<Vec<V>>()
                     })
                     .unwrap_or(vec![])
             })
@@ -372,9 +368,9 @@ mod lotable_tests {
 
     #[test]
     fn values_iter_generator() {
-        let mut lotable: LOTable<String, u64> = LOTable::new();
+        let lotable: LOTable<String, u64> = LOTable::new();
 
-        (0..100).into_iter().for_each(|i| {
+        (0..100).into_iter().for_each(|_i| {
             lotable.insert("Saudade0".to_string(), 123123);
             lotable.insert("Saudade0".to_string(), 123);
             lotable.insert("Saudade1".to_string(), 123123);
