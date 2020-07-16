@@ -164,7 +164,7 @@ where
     #[inline]
     pub fn clear(&self) {
         self.latch.iter().for_each(move |b| {
-            self.txn.begin(|t| {
+            let _ = self.txn.begin(|t| {
                 let container = t.read(&b);
                 container.replace_with(|_r| Container(HashMap::default()));
             });
