@@ -1,8 +1,6 @@
 // Behind the feature gates
 #![cfg_attr(feature = "hw", feature(stdsimd))]
 #![cfg_attr(feature = "hw", feature(llvm_asm))]
-#![cfg_attr(feature = "nightly", feature(alloc_layout_extra))]
-#![cfg_attr(feature = "nightly", feature(weak_into_raw))]
 // FIXME: Baking still
 #![allow(dead_code)]
 #![allow(unused_imports)]
