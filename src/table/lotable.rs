@@ -137,7 +137,7 @@ where
     #[inline]
     pub fn len(&self) -> usize {
         self.latch
-            .iter()
+            .first()
             .map(move |b| {
                 self.txn
                     .begin(|t| {
@@ -146,7 +146,7 @@ where
                     })
                     .unwrap_or(0_usize)
             })
-            .sum()
+            .unwrap_or(0_usize)
     }
 
     #[inline]
