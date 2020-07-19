@@ -1,6 +1,6 @@
 [package]
 name = "lever"
-version = "0.1.1-alpha.7"
+version = "0.1.1-alpha.8"
 authors = ["Mahmut Bulut <vertexclique@gmail.com>"]
 edition = "2018"
 description = "Pillars for Transactional Systems and Data Grids"
