@@ -24,8 +24,6 @@ not sacrificing failover mechanisms.
 Lever provides STM, lock-free, wait-free synchronization primitives and various other tools to facilitate writing
 transactional in-memory systems.
 
-Lever is alpha stage software.
-
 # Sync
 Synchronization primitives which can allow users to write concurrent task structures. Lever don't have runtime or async code.
 Whole library is based on top of POSIX threads and agnostic IO. That said, these are the few structures which can be used in sync package:
@@ -103,7 +101,7 @@ Workloads are separated in benchmarks like:
 * 80-20 R/RW mixed from concurrent 8 threads
 * Pure writes from concurrent 8 threads
 
-Lever is performant. E.g. Lever's table implementations are doing 25+ million operations under 80ns.
+Lever is performant. E.g. Lever's table implementations are doing 25+ million operations under 1,9 seconds.
 Whole thing is used in production and continuously improved. This crate consolidates plenty of primitives, tools, structures and such.
 You can try benchmarking yourself. Benchmarking code is included.
 
