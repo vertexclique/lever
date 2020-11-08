@@ -26,6 +26,8 @@
     html_logo_url = "https://raw.githubusercontent.com/vertexclique/lever/master/img/lever-square.png"
 )]
 
+/// Indexes and lookup structures
+pub mod index;
 /// Synchronization primitives
 pub mod sync;
 /// Transactional in-memory table variations
