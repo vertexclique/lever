@@ -1,8 +1,10 @@
-use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
-use std::sync::Arc;
+use std::sync::{
+    atomic::{self, AtomicBool, AtomicU8, AtomicUsize, Ordering},
+    Arc,
+};
 
 #[derive(Debug)]
-pub struct Balancer {
+struct Balancer {
     toggle: Arc<AtomicBool>,
 }
 
@@ -30,26 +32,29 @@ unsafe impl Send for Balancer {}
 unsafe impl Sync for Balancer {}
 
 #[derive(Debug)]
-pub struct Merger {
-    halves: Vec<Merger>,
+struct BalancingMerger {
+    halves: Vec<BalancingMerger>,
     layer: Vec<Balancer>,
     width: usize,
 }
 
-impl Merger {
-    pub fn new(width: usize) -> Merger {
+impl BalancingMerger {
+    pub fn new(width: usize) -> BalancingMerger {
         let layer = (0..width / 2)
             .into_iter()
             .map(|_| Balancer::new())
             .collect::<Vec<Balancer>>();
 
         let halves = if width > 2 {
-            vec![Merger::new(width / 2), Merger::new(width / 2)]
+            vec![
+                BalancingMerger::new(width / 2),
+                BalancingMerger::new(width / 2),
+            ]
         } else {
             vec![]
         };
 
-        Merger {
+        BalancingMerger {
             halves,
             layer,
             width,
@@ -69,24 +74,27 @@ impl Merger {
 }
 
 #[derive(Debug)]
-pub struct Bitonic {
-    halves: Vec<Bitonic>,
-    merger: Merger,
+pub struct BalancingBitonic {
+    halves: Vec<BalancingBitonic>,
+    merger: BalancingMerger,
     width: usize,
 }
 
-impl Bitonic {
-    pub fn new(width: usize) -> Bitonic {
+impl BalancingBitonic {
+    pub fn new(width: usize) -> BalancingBitonic {
         assert_eq!(width % 2, 0, "Wires should be multiple of two.");
         let halves = if width > 2 {
-            vec![Bitonic::new(width / 2), Bitonic::new(width / 2)]
+            vec![
+                BalancingBitonic::new(width / 2),
+                BalancingBitonic::new(width / 2),
+            ]
         } else {
             vec![]
         };
 
-        Bitonic {
+        BalancingBitonic {
             halves,
-            merger: Merger::new(width),
+            merger: BalancingMerger::new(width),
             width,
         }
     }
@@ -102,12 +110,49 @@ impl Bitonic {
     }
 }
 
+#[derive(Debug)]
+pub struct CountingBitonic {
+    /// Underlying balancing bitonic implementation
+    balancing: BalancingBitonic,
+    /// Represents current wire traversal counter value
+    state: Arc<AtomicUsize>,
+    /// Represents full wire trips
+    trips: Arc<AtomicUsize>,
+    /// Width of the bitonic network
+    width: usize,
+}
+
+impl CountingBitonic {
+    pub fn new(width: usize) -> CountingBitonic {
+        CountingBitonic {
+            balancing: BalancingBitonic::new(width),
+            state: Arc::new(AtomicUsize::default()),
+            trips: Arc::new(AtomicUsize::default()),
+            width,
+        }
+    }
+
+    pub fn traverse(&self, input: usize) -> usize {
+        let wire = self.balancing.traverse(input);
+        let trips = self.trips.fetch_add(1, Ordering::AcqRel) + 1;
+        let (q, r) = (trips / self.width, trips % self.width);
+        if r > 0 {
+            self.state.fetch_add(wire, Ordering::AcqRel)
+        } else {
+            wire.checked_sub(q).map_or_else(
+                || self.state.fetch_add(wire, Ordering::AcqRel),
+                |e| self.state.fetch_add(e, Ordering::AcqRel),
+            )
+        }
+    }
+}
+
 #[cfg(test)]
 mod test_bitonics {
     use super::*;
 
     #[test]
-    fn test_bitonic_traversal() {
+    fn test_balancing_bitonic_traversal() {
         let data: Vec<Vec<usize>> = vec![
             vec![9, 3, 1],
             vec![5, 4],
@@ -115,7 +160,7 @@ mod test_bitonics {
             vec![30, 40, 2],
         ];
 
-        let bitonic = Bitonic::new(4);
+        let bitonic = BalancingBitonic::new(4);
         let wires = data
             .iter()
             .flatten()
@@ -128,5 +173,131 @@ mod test_bitonics {
         // 1: 1, 11, 40,
         // 2: 3, 23, 30,
         // 3: 5, 4, 2
+    }
+
+    #[test]
+    fn test_counting_bitonic_traversal() {
+        let data: Vec<Vec<usize>> = vec![
+            vec![9, 3, 1],
+            vec![5, 4],
+            vec![11, 23, 4, 10],
+            vec![30, 40, 2],
+        ];
+
+        let bitonic = CountingBitonic::new(4);
+        let wires = data
+            .iter()
+            .flatten()
+            .map(|d| bitonic.traverse(*d))
+            .collect::<Vec<usize>>();
+
+        assert_eq!(&*wires, [0, 0, 2, 3, 5, 5, 6, 8, 9, 9, 11, 12])
+    }
+
+    #[test]
+    fn test_balancing_bitonic_mt_traversal() {
+        (0..10_000).into_iter().for_each(|_| {
+            let bitonic = Arc::new(BalancingBitonic::new(4));
+
+            let data1: Vec<usize> = vec![9, 3, 1];
+            let bitonic1 = bitonic.clone();
+            let bdata1 = std::thread::spawn(move || {
+                data1
+                    .iter()
+                    .map(|d| bitonic1.traverse(*d))
+                    .collect::<Vec<usize>>()
+            });
+
+            let data2: Vec<usize> = vec![5, 4];
+            let bitonic2 = bitonic.clone();
+            let bdata2 = std::thread::spawn(move || {
+                data2
+                    .iter()
+                    .map(|d| bitonic2.traverse(*d))
+                    .collect::<Vec<usize>>()
+            });
+
+            let data3: Vec<usize> = vec![11, 23, 4, 10];
+            let bitonic3 = bitonic.clone();
+            let bdata3 = std::thread::spawn(move || {
+                data3
+                    .iter()
+                    .map(|d| bitonic3.traverse(*d))
+                    .collect::<Vec<usize>>()
+            });
+
+            let data4: Vec<usize> = vec![30, 40, 2];
+            let bitonic4 = bitonic.clone();
+            let bdata4 = std::thread::spawn(move || {
+                data4
+                    .iter()
+                    .map(|d| bitonic4.traverse(*d))
+                    .collect::<Vec<usize>>()
+            });
+
+            let (bdata1, bdata2, bdata3, bdata4) = (
+                bdata1.join().unwrap(),
+                bdata2.join().unwrap(),
+                bdata3.join().unwrap(),
+                bdata4.join().unwrap(),
+            );
+            let res: Vec<usize> = [bdata1, bdata2, bdata3, bdata4].concat();
+
+            assert!(res.iter().count() == 12);
+        });
+    }
+
+    #[test]
+    fn test_counting_bitonic_mt_traversal() {
+        (0..10_000).into_iter().for_each(|_| {
+            let bitonic = Arc::new(CountingBitonic::new(4));
+
+            let data1: Vec<usize> = vec![9, 3, 1];
+            let bitonic1 = bitonic.clone();
+            let bdata1 = std::thread::spawn(move || {
+                data1
+                    .iter()
+                    .map(|d| bitonic1.traverse(*d))
+                    .collect::<Vec<usize>>()
+            });
+
+            let data2: Vec<usize> = vec![5, 4];
+            let bitonic2 = bitonic.clone();
+            let bdata2 = std::thread::spawn(move || {
+                data2
+                    .iter()
+                    .map(|d| bitonic2.traverse(*d))
+                    .collect::<Vec<usize>>()
+            });
+
+            let data3: Vec<usize> = vec![11, 23, 4, 10];
+            let bitonic3 = bitonic.clone();
+            let bdata3 = std::thread::spawn(move || {
+                data3
+                    .iter()
+                    .map(|d| bitonic3.traverse(*d))
+                    .collect::<Vec<usize>>()
+            });
+
+            let data4: Vec<usize> = vec![30, 40, 2];
+            let bitonic4 = bitonic.clone();
+            let bdata4 = std::thread::spawn(move || {
+                data4
+                    .iter()
+                    .map(|d| bitonic4.traverse(*d))
+                    .collect::<Vec<usize>>()
+            });
+
+            let (bdata1, bdata2, bdata3, bdata4) = (
+                bdata1.join().unwrap(),
+                bdata2.join().unwrap(),
+                bdata3.join().unwrap(),
+                bdata4.join().unwrap(),
+            );
+            let res: Vec<usize> = [bdata1, bdata2, bdata3, bdata4].concat();
+
+            assert!(res.iter().count() == 12);
+            assert!(res.iter().find(|&e| *e >= 12 / 2).is_some())
+        });
     }
 }
