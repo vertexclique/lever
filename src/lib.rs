@@ -28,6 +28,8 @@
 
 /// Indexes and lookup structures
 pub mod index;
+/// Statistics related structures
+pub mod stats;
 /// Synchronization primitives
 pub mod sync;
 /// Transactional in-memory table variations

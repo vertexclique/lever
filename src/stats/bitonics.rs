@@ -3,7 +3,7 @@ use std::sync::{
     Arc,
 };
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct Balancer {
     toggle: Arc<AtomicBool>,
 }
@@ -31,7 +31,7 @@ impl Balancer {
 unsafe impl Send for Balancer {}
 unsafe impl Sync for Balancer {}
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct BalancingMerger {
     halves: Vec<BalancingMerger>,
     layer: Vec<Balancer>,
@@ -73,7 +73,10 @@ impl BalancingMerger {
     }
 }
 
-#[derive(Debug)]
+unsafe impl Send for BalancingMerger {}
+unsafe impl Sync for BalancingMerger {}
+
+#[derive(Clone, Debug)]
 pub struct BalancingBitonic {
     halves: Vec<BalancingBitonic>,
     merger: BalancingMerger,
@@ -110,7 +113,10 @@ impl BalancingBitonic {
     }
 }
 
-#[derive(Debug)]
+unsafe impl Send for BalancingBitonic {}
+unsafe impl Sync for BalancingBitonic {}
+
+#[derive(Clone, Debug)]
 pub struct CountingBitonic {
     /// Underlying balancing bitonic implementation
     balancing: BalancingBitonic,
@@ -123,6 +129,8 @@ pub struct CountingBitonic {
 }
 
 impl CountingBitonic {
+    ///
+    /// Create new counting bitonic network.
     pub fn new(width: usize) -> CountingBitonic {
         CountingBitonic {
             balancing: BalancingBitonic::new(width),
@@ -132,6 +140,7 @@ impl CountingBitonic {
         }
     }
 
+    /// Traverse data through the counting bitonic.
     pub fn traverse(&self, input: usize) -> usize {
         let wire = self.balancing.traverse(input);
         let trips = self.trips.fetch_add(1, Ordering::AcqRel) + 1;
@@ -144,6 +153,20 @@ impl CountingBitonic {
                 |e| self.state.fetch_add(e, Ordering::AcqRel),
             )
         }
+    }
+
+    /// Get inner state for the counting bitonic
+    pub fn get(&self) -> usize {
+        self.state.load(Ordering::Acquire)
+    }
+}
+
+unsafe impl Send for CountingBitonic {}
+unsafe impl Sync for CountingBitonic {}
+
+impl Default for CountingBitonic {
+    fn default() -> Self {
+        CountingBitonic::new(8)
     }
 }
 
@@ -192,6 +215,26 @@ mod test_bitonics {
             .collect::<Vec<usize>>();
 
         assert_eq!(&*wires, [0, 0, 2, 3, 5, 5, 6, 8, 9, 9, 11, 12])
+    }
+
+    #[test]
+    fn test_counting_bitonic_traversal_and_get() {
+        let data: Vec<Vec<usize>> = vec![
+            vec![9, 3, 1],
+            vec![5, 4],
+            vec![11, 23, 4, 10],
+            vec![30, 40, 2],
+        ];
+
+        let bitonic = CountingBitonic::new(4);
+        let wires = data
+            .iter()
+            .flatten()
+            .map(|d| bitonic.traverse(*d))
+            .collect::<Vec<usize>>();
+
+        assert_eq!(&*wires, [0, 0, 2, 3, 5, 5, 6, 8, 9, 9, 11, 12]);
+        assert_eq!(bitonic.get(), 12);
     }
 
     #[test]
