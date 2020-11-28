@@ -20,11 +20,18 @@ impl Zone {
     pub fn hits(&self) -> usize {
         self.stats.get()
     }
+
+    ///
+    /// Return zone triple of (min, max, selectivity)
+    pub fn zone_triple(&self) -> (usize, usize, usize) {
+        (self.min, self.max, self.selectivity)
+    }
 }
 
 ///
 /// Represents a zone map for a table
 pub struct ZoneMap {
+    /// Zone map built in
     zones: LOTable<usize, Zone>
 }
 
@@ -41,8 +48,16 @@ impl ZoneMap {
     }
 
     ///
+    /// Update given zone id with given selectivity data
+    pub fn update(&self, zone_id: usize, min: usize, max: usize, selectivity: usize)
+    {
+        let zone = Zone { min, max, selectivity, ..Default::default() };
+        let _ = self.zones.insert(zone_id, zone);
+    }
+
+    ///
     /// Update given zone id with given zone data
-    pub fn update(&self, zone_id: usize, zone_data: Zone)
+    pub fn update_zone(&self, zone_id: usize, zone_data: Zone)
     {
         let _ = self.zones.insert(zone_id, zone_data);
     }
@@ -56,5 +71,10 @@ impl ZoneMap {
                 Some(z.to_owned())
             })
         }).map_or(0, |z| z.selectivity)
+    }
+
+    /// Get zone selectivity hits for the given zone id
+    pub fn zone_hits(&self, zone_id: usize) -> usize {
+        self.zones.get(&zone_id).map_or(0, |z| z.hits())
     }
 }

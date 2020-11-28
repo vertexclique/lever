@@ -76,6 +76,7 @@ impl BalancingMerger {
 unsafe impl Send for BalancingMerger {}
 unsafe impl Sync for BalancingMerger {}
 
+/// Balancing bitonic network
 #[derive(Clone, Debug)]
 pub struct BalancingBitonic {
     halves: Vec<BalancingBitonic>,
@@ -116,6 +117,7 @@ impl BalancingBitonic {
 unsafe impl Send for BalancingBitonic {}
 unsafe impl Sync for BalancingBitonic {}
 
+/// Counting bitonic network
 #[derive(Clone, Debug)]
 pub struct CountingBitonic {
     /// Underlying balancing bitonic implementation
