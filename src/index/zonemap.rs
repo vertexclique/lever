@@ -29,7 +29,7 @@ impl Zone {
 }
 
 ///
-/// Represents a zone map for a table
+/// Represents a zone map for a column
 pub struct ZoneMap {
     /// Zone map built in
     zones: LOTable<usize, Zone>,
