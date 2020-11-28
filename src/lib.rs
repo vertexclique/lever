@@ -9,6 +9,9 @@
 
 //!
 //! Lever is a library for writing transactional systems (esp. for in-memory data). It consists of various parts:
+//!
+//! * `index`: Indexes and lookup structures
+//! * `stats`: Statistics structures
 //! * `sync`: Synchronization primitives for transactional systems
 //! * `table`: Various KV table kinds backed by transactional algorithms
 //! * `txn`: Transactional primitives and management
@@ -19,8 +22,6 @@
 //!
 //! Lever provides STM, lock-free, wait-free synchronization primitives and various other tools to facilitate writing
 //! transactional in-memory systems.
-//!
-//! Lever is alpha stage software.
 
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/vertexclique/lever/master/img/lever-square.png"
