@@ -1,5 +1,5 @@
-use crate::table::lotable::LOTable;
 use crate::stats::bitonics::CountingBitonic;
+use crate::table::lotable::LOTable;
 use std::borrow::Cow;
 
 ///
@@ -9,7 +9,7 @@ pub struct Zone {
     pub min: usize,
     pub max: usize,
     pub selectivity: usize,
-    pub stats: CountingBitonic
+    pub stats: CountingBitonic,
 }
 
 unsafe impl Send for Zone {}
@@ -32,7 +32,7 @@ impl Zone {
 /// Represents a zone map for a table
 pub struct ZoneMap {
     /// Zone map built in
-    zones: LOTable<usize, Zone>
+    zones: LOTable<usize, Zone>,
 }
 
 unsafe impl Send for ZoneMap {}
@@ -43,34 +43,39 @@ impl ZoneMap {
     /// Create new zone map
     pub fn new() -> ZoneMap {
         Self {
-            zones: LOTable::new()
+            zones: LOTable::new(),
         }
     }
 
     ///
     /// Update given zone id with given selectivity data
-    pub fn update(&self, zone_id: usize, min: usize, max: usize, selectivity: usize)
-    {
-        let zone = Zone { min, max, selectivity, ..Default::default() };
+    pub fn update(&self, zone_id: usize, min: usize, max: usize, selectivity: usize) {
+        let zone = Zone {
+            min,
+            max,
+            selectivity,
+            ..Default::default()
+        };
         let _ = self.zones.insert(zone_id, zone);
     }
 
     ///
     /// Update given zone id with given zone data
-    pub fn update_zone(&self, zone_id: usize, zone_data: Zone)
-    {
+    pub fn update_zone(&self, zone_id: usize, zone_data: Zone) {
         let _ = self.zones.insert(zone_id, zone_data);
     }
 
     ///
     /// Get selectivity for the given zone id
     pub fn selectivity(&self, zone_id: usize) -> usize {
-        self.zones.replace_with(&zone_id, |z| {
-            z.map_or(Some(Zone::default()), |z| {
-                z.stats.traverse(zone_id);
-                Some(z.to_owned())
+        self.zones
+            .replace_with(&zone_id, |z| {
+                z.map_or(Some(Zone::default()), |z| {
+                    z.stats.traverse(zone_id);
+                    Some(z.to_owned())
+                })
             })
-        }).map_or(0, |z| z.selectivity)
+            .map_or(0, |z| z.selectivity)
     }
 
     /// Get zone selectivity hits for the given zone id

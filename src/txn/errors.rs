@@ -1,5 +1,5 @@
-use thiserror::Error;
 use std::result;
+use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum TxnErrorType {
