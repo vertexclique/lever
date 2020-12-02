@@ -1,6 +1,8 @@
 use crate::stats::bitonics::CountingBitonic;
 use crate::table::lotable::LOTable;
 use std::borrow::Cow;
+use anyhow::*;
+use std::sync::Arc;
 
 ///
 /// Represents single zone definition for the selectivity
@@ -45,6 +47,12 @@ impl ZoneMap {
         Self {
             zones: LOTable::new(),
         }
+    }
+
+    /// Insert given zone data with given zone id into the zone map
+    /// Returns old zone data if zone data exists
+    pub fn insert(&self, zone_id: usize, zone_data: Zone) -> Result<Arc<Option<Zone>>> {
+        self.zones.insert(zone_id, zone_data)
     }
 
     ///
