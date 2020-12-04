@@ -1,7 +1,7 @@
 use crate::stats::bitonics::CountingBitonic;
 use crate::table::lotable::LOTable;
-use std::borrow::Cow;
 use anyhow::*;
+use std::borrow::Cow;
 use std::sync::Arc;
 
 ///
@@ -49,10 +49,19 @@ impl ZoneMap {
         }
     }
 
+    ///
     /// Insert given zone data with given zone id into the zone map
     /// Returns old zone data if zone data exists
     pub fn insert(&self, zone_id: usize, zone_data: Zone) -> Result<Arc<Option<Zone>>> {
         self.zones.insert(zone_id, zone_data)
+    }
+
+    ///
+    /// Inserts given zone dataset into this zone map
+    pub fn batch_insert(&self, zones: Vec<(usize, Zone)>) {
+        zones.iter().for_each(|(zid, zdata)| {
+            self.zones.insert(*zid, zdata.clone());
+        })
     }
 
     ///
