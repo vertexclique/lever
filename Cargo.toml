@@ -40,6 +40,7 @@ crossbeam-epoch = "0.8.2"
 parking_lot = "0.11"
 anyhow = "1.0"
 thiserror = "1.0"
+slice-group-by = "0.2.6"
 
 [dev-dependencies]
 criterion = "0.3"

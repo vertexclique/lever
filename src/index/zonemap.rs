@@ -1,7 +1,9 @@
 use crate::stats::bitonics::CountingBitonic;
 use crate::table::lotable::LOTable;
 use anyhow::*;
-use std::borrow::Cow;
+use slice_group_by::GroupBy;
+use std::borrow::{Borrow, Cow};
+use std::ops::Deref;
 use std::sync::Arc;
 
 ///
@@ -30,37 +32,48 @@ impl Zone {
     }
 }
 
+impl From<(usize, usize)> for Zone {
+    fn from(r: (usize, usize)) -> Self {
+        Zone {
+            min: r.0,
+            max: r.1,
+            ..Self::default()
+        }
+    }
+}
+
 ///
-/// Represents a zone map for a column
-pub struct ZoneMap {
+/// Represents a zone data for a column
+#[derive(Debug, Clone)]
+pub struct ColumnZoneData {
     /// Zone map built in
     zones: LOTable<usize, Zone>,
 }
 
-unsafe impl Send for ZoneMap {}
-unsafe impl Sync for ZoneMap {}
+unsafe impl Send for ColumnZoneData {}
+unsafe impl Sync for ColumnZoneData {}
 
-impl ZoneMap {
+impl ColumnZoneData {
     ///
-    /// Create new zone map
-    pub fn new() -> ZoneMap {
+    /// Create new column zone data
+    pub fn new() -> ColumnZoneData {
         Self {
             zones: LOTable::new(),
         }
     }
 
     ///
-    /// Insert given zone data with given zone id into the zone map
+    /// Insert given zone data with given zone id into the column zone data
     /// Returns old zone data if zone data exists
     pub fn insert(&self, zone_id: usize, zone_data: Zone) -> Result<Arc<Option<Zone>>> {
         self.zones.insert(zone_id, zone_data)
     }
 
     ///
-    /// Inserts given zone dataset into this zone map
+    /// Inserts given zone dataset into this column zone data
     pub fn batch_insert(&self, zones: Vec<(usize, Zone)>) {
         zones.iter().for_each(|(zid, zdata)| {
-            self.zones.insert(*zid, zdata.clone());
+            let _ = self.zones.insert(*zid, zdata.clone());
         })
     }
 
@@ -98,5 +111,60 @@ impl ZoneMap {
     /// Get zone selectivity hits for the given zone id
     pub fn zone_hits(&self, zone_id: usize) -> usize {
         self.zones.get(&zone_id).map_or(0, |z| z.hits())
+    }
+}
+
+///
+/// Represents a zone map for a table
+#[derive(Debug, Clone)]
+pub struct ZoneMap {
+    col_zones: LOTable<String, ColumnZoneData>,
+}
+
+impl ZoneMap {
+    ///
+    /// Create new zone map
+    pub fn new() -> ZoneMap {
+        Self {
+            col_zones: LOTable::new(),
+        }
+    }
+
+    ///
+    /// Insert given column zone data with given zone id into the column zone map
+    /// Returns old column zone data if column zone data exists
+    pub fn insert<T>(
+        &self,
+        column: T,
+        zone_data: ColumnZoneData,
+    ) -> Result<Arc<Option<ColumnZoneData>>>
+    where
+        T: Into<String>,
+    {
+        self.col_zones.insert(column.into(), zone_data)
+    }
+}
+
+impl<'a, T, R> From<Vec<(T, &'a [R])>> for ZoneMap
+where
+    T: Into<String>,
+    R: PartialOrd,
+{
+    fn from(data: Vec<(T, &'a [R])>) -> Self {
+        let zm = ZoneMap::new();
+        data.into_iter().for_each(|(col, d)| {
+            let mut row_id = 0_usize;
+            let czm = ColumnZoneData::new();
+            d.linear_group_by(|l, r| l < r).for_each(|d| {
+                let r = d.len();
+                let offset = row_id;
+                let z = Zone::from((row_id, row_id + r));
+                row_id += r;
+                let _ = czm.insert(offset, z);
+            });
+
+            let _ = zm.insert(col.into(), czm);
+        });
+        zm
     }
 }
