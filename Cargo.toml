@@ -40,6 +40,8 @@ crossbeam-epoch = "0.8.2"
 parking_lot = "0.11"
 anyhow = "1.0"
 thiserror = "1.0"
+itertools = "0.9"
+slice-group-by = "0.2.6"
 
 [dev-dependencies]
 criterion = "0.3"
@@ -70,4 +72,9 @@ harness = false
 [[bench]]
 name = "read_parameterized_benches"
 path = "benches/read_parameterized_benches.rs"
+harness = false
+
+[[bench]]
+name = "zonemap_benches"
+path = "benches/zonemap_benches.rs"
 harness = false

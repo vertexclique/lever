@@ -13,6 +13,8 @@
 </div>
 
 Lever is a library for writing transactional systems (esp. for in-memory data). It consists of various parts:
+* `index`: Indexes and lookup structures
+* `stats`: Statistics structures
 * `sync`: Synchronization primitives for transactional systems
 * `table`: Various KV table kinds backed by transactional algorithms
 * `txn`: Transactional primitives and management

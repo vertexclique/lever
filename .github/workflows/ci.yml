@@ -54,12 +54,19 @@ jobs:
           command: check
           args: --all --bins --examples --tests
 
-      - name: tests nightly - linux + windows
-        if: matrix.version == 'nightly' && matrix.os != 'macOS-latest'
+      - name: tests nightly - linux
+        if: matrix.version == 'nightly' && matrix.os != 'macOS-latest' && matrix.os != 'windows-latest'
         uses: actions-rs/cargo@v1
         with:
           command: test
           args: --features nightly --all
+
+      # Remove this block and merge with previous block when github actions windows machines execute htm instr.
+      - name: tests nightly - windows
+        if: matrix.version == 'nightly' && matrix.os != 'macOS-latest' && matrix.os != 'ubuntu-latest'
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
 
       - name: tests stable
         if: matrix.version == 'stable'

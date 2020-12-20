@@ -123,6 +123,39 @@ where
     }
 
     #[inline]
+    pub fn replace_with<F>(&self, k: &K, f: F) -> Option<V>
+    where
+        F: Fn(Option<&V>) -> Option<V>,
+    {
+        let tvar = self.seek_tvar(k);
+
+        self.txn
+            .begin(|t| {
+                let container = t.read(&tvar);
+                let entries = container.get();
+                f(entries.0.get(k))
+            })
+            .unwrap_or(None)
+    }
+
+    #[inline]
+    pub fn replace_with_mut<F>(&self, k: &K, mut f: F) -> Option<V>
+    where
+        F: FnMut(&mut Option<V>) -> &mut Option<V>,
+    {
+        let tvar = self.seek_tvar(k);
+
+        self.txn
+            .begin(|t| {
+                let container = t.read(&tvar);
+                let entries = container.get();
+                let mut mv = entries.0.get(k).cloned();
+                f(&mut mv).clone()
+            })
+            .unwrap_or(None)
+    }
+
+    #[inline]
     pub fn contains_key(&self, k: &K) -> bool {
         let tvar = self.seek_tvar(&k);
 

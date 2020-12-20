@@ -1,4 +1,4 @@
-use anyhow::*;
+use std::result;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -9,4 +9,4 @@ pub enum TxnErrorType {
     Abort = 1,
 }
 
-pub type TxnResult<T> = anyhow::Result<T, TxnErrorType>;
+pub type TxnResult<T> = result::Result<T, TxnErrorType>;

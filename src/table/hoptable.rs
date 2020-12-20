@@ -168,7 +168,6 @@ where
             return true;
         }
 
-        #[cold]
         false
     }
 
