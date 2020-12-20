@@ -161,6 +161,8 @@ impl CountingBitonic {
     pub fn get(&self) -> usize {
         self.state.load(Ordering::Acquire)
     }
+
+    // TODO: min max here?
 }
 
 unsafe impl Send for CountingBitonic {}

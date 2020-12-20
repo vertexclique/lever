@@ -3,8 +3,10 @@ use crate::table::lotable::LOTable;
 use anyhow::*;
 use slice_group_by::GroupBy;
 use std::borrow::{Borrow, Cow};
-use std::ops::Deref;
+use std::ops::{Deref, Range, RangeBounds};
 use std::sync::Arc;
+use std::any::Any;
+use itertools::Itertools;
 
 ///
 /// Represents single zone definition for the selectivity
@@ -37,6 +39,17 @@ impl From<(usize, usize)> for Zone {
         Zone {
             min: r.0,
             max: r.1,
+            ..Self::default()
+        }
+    }
+}
+
+impl From<(usize, usize, usize)> for Zone {
+    fn from(r: (usize, usize, usize)) -> Self {
+        Zone {
+            min: r.0,
+            max: r.1,
+            selectivity: r.2,
             ..Self::default()
         }
     }
@@ -108,6 +121,47 @@ impl ColumnZoneData {
             .map_or(0, |z| z.selectivity)
     }
 
+    ///
+    /// Returns selectivity in question, queried by the range
+    pub fn selectivity_range<R>(&self, range_min: R, range_max: R, data: &[R]) -> usize
+    where
+        R: PartialOrd + std::fmt::Debug
+    {
+        self
+            .zones
+            .values()
+            .into_iter()
+            .filter(|z| {
+                let (zl, zr, _) = z.zone_triple();
+                (&data[zl]..=&data[zr]).contains(&&range_min) ||
+                (&data[zl]..=&data[zr]).contains(&&range_max)
+            })
+            .map(|z| z.selectivity)
+            .sum()
+    }
+
+    ///
+    /// Returns scan range in question, queried by the constraint range
+    pub fn scan_range<R>(&self, range_min: R, range_max: R, data: &[R]) -> (usize, usize)
+    where
+        R: PartialOrd
+    {
+        self
+            .zones
+            .values()
+            .into_iter()
+            .filter(|z| {
+                let (zl, zr, _) = z.zone_triple();
+                (&data[zl]..=&data[zr]).contains(&&range_min) ||
+                    (&data[zl]..=&data[zr]).contains(&&range_max)
+            })
+            .fold((usize::MAX, 0_usize), |mut acc, e| {
+                acc.0 = acc.0.min(e.min);
+                acc.1 = acc.1.max(e.max);
+                acc
+            })
+    }
+
     /// Get zone selectivity hits for the given zone id
     pub fn zone_hits(&self, zone_id: usize) -> usize {
         self.zones.get(&zone_id).map_or(0, |z| z.hits())
@@ -143,6 +197,26 @@ impl ZoneMap {
     {
         self.col_zones.insert(column.into(), zone_data)
     }
+
+    ///
+    /// Returns selectivity in question, queried by the range
+    pub fn selectivity_range<C, R>(&self, column: C, range_min: R, range_max: R, data: &[R]) -> usize
+    where
+        C: Into<String>,
+        R: PartialOrd + std::fmt::Debug
+    {
+        self.col_zones.get(&column.into()).map_or(0_usize, |c| c.selectivity_range(range_min, range_max, data))
+    }
+
+    ///
+    /// Returns scan range in question, queried by the constraint range
+    pub fn scan_range<C, R>(&self, column: C, range_min: R, range_max: R, data: &[R]) -> (usize, usize)
+        where
+            C: Into<String>,
+            R: PartialOrd + std::fmt::Debug
+    {
+        self.col_zones.get(&column.into()).map_or((0, 0), |c| c.scan_range(range_min, range_max, data))
+    }
 }
 
 impl<'a, T, R> From<Vec<(T, &'a [R])>> for ZoneMap
@@ -158,7 +232,7 @@ where
             d.linear_group_by(|l, r| l < r).for_each(|d| {
                 let r = d.len();
                 let offset = row_id;
-                let z = Zone::from((row_id, row_id + r));
+                let z = Zone::from((row_id, row_id + r - 1, r));
                 row_id += r;
                 let _ = czm.insert(offset, z);
             });
@@ -166,5 +240,54 @@ where
             let _ = zm.insert(col.into(), czm);
         });
         zm
+    }
+}
+
+
+#[cfg(test)]
+mod tests_zone_map {
+    use super::*;
+
+    #[test]
+    fn test_zone_selectivity() {
+        let customers: Vec<i32> = vec![
+            vec![1, 0, -1, -2].repeat(2),
+            vec![1, 2, 3, 4].repeat(3)
+        ].concat();
+        let products = vec![4, 3, 2, 1].repeat(100);
+        let payouts = vec![4, 2, 6, 7].repeat(100);
+
+        let ingestion_data = vec![
+            ("customers", customers.as_slice()),
+            ("products", products.as_slice()),
+            ("payouts", payouts.as_slice()),
+        ];
+
+        let zone_map = ZoneMap::from(ingestion_data);
+
+        // Selectivity range is: [-2, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4]
+        assert_eq!(zone_map.selectivity_range("customers", 4, 4, &*customers), 13);
+    }
+
+    #[test]
+    fn test_zone_scan_range() {
+        let customers: Vec<i32> = vec![
+            vec![1, 0, -1, -2].repeat(2),
+            vec![1, 2, 3, 4].repeat(3)
+        ].concat();
+        let products = vec![4, 3, 2, 1].repeat(100);
+        let payouts = vec![4, 2, 6, 7].repeat(100);
+
+        let ingestion_data = vec![
+            ("customers", customers.as_slice()),
+            ("products", products.as_slice()),
+            ("payouts", payouts.as_slice()),
+        ];
+
+        let zone_map = ZoneMap::from(ingestion_data);
+
+        // Selectivity range is: [-2, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4]
+        // Scan range is: [7, 19]
+        assert_eq!(zone_map.scan_range("customers", 4, 4, &*customers), (7, 19));
     }
 }
