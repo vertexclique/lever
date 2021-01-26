@@ -37,6 +37,8 @@ pub mod sync;
 pub mod table;
 /// Transactional primitives and transaction management
 pub mod txn;
+/// Memory reclamation
+pub mod mr;
 
 /// Allocation helpers
 mod alloc;
