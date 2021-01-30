@@ -29,6 +29,8 @@
 
 /// Indexes and lookup structures
 pub mod index;
+/// Memory reclamation
+pub mod mr;
 /// Statistics related structures
 pub mod stats;
 /// Synchronization primitives
@@ -37,8 +39,6 @@ pub mod sync;
 pub mod table;
 /// Transactional primitives and transaction management
 pub mod txn;
-/// Memory reclamation
-pub mod mr;
 
 /// Allocation helpers
 mod alloc;

@@ -1,4 +1,3 @@
-
 //////////////////////////
 // Ref counting
 //////////////////////////
@@ -28,4 +27,3 @@ macro_rules! lfref_impl {
 pub const LFREF_LINK: usize = 0;
 #[cfg(target_endian = "big")]
 pub const LFREF_LINK: usize = 1;
-
