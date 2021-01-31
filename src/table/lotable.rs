@@ -378,20 +378,20 @@ mod lotable_tests {
     #[test]
     fn iter_generator() {
         let lotable: LOTable<String, u64> = LOTable::new();
-        lotable.insert("Saudade0".to_string(), 123123);
-        lotable.insert("Saudade0".to_string(), 123);
-        lotable.insert("Saudade1".to_string(), 123123);
-        lotable.insert("Saudade2".to_string(), 123123);
-        lotable.insert("Saudade3".to_string(), 123123);
-        lotable.insert("Saudade4".to_string(), 123123);
-        lotable.insert("Saudade5".to_string(), 123123);
+        lotable.insert("Saudade0".to_string(), 123123).unwrap();
+        lotable.insert("Saudade0".to_string(), 123).unwrap();
+        lotable.insert("Saudade1".to_string(), 123123).unwrap();
+        lotable.insert("Saudade2".to_string(), 123123).unwrap();
+        lotable.insert("Saudade3".to_string(), 123123).unwrap();
+        lotable.insert("Saudade4".to_string(), 123123).unwrap();
+        lotable.insert("Saudade5".to_string(), 123123).unwrap();
 
-        lotable.insert("123123".to_string(), 123123);
-        lotable.insert("1231231".to_string(), 123123);
-        lotable.insert("1231232".to_string(), 123123);
-        lotable.insert("1231233".to_string(), 123123);
-        lotable.insert("1231234".to_string(), 123123);
-        lotable.insert("1231235".to_string(), 123123);
+        lotable.insert("123123".to_string(), 123123).unwrap();
+        lotable.insert("1231231".to_string(), 123123).unwrap();
+        lotable.insert("1231232".to_string(), 123123).unwrap();
+        lotable.insert("1231233".to_string(), 123123).unwrap();
+        lotable.insert("1231234".to_string(), 123123).unwrap();
+        lotable.insert("1231235".to_string(), 123123).unwrap();
 
         let res: Vec<(String, u64)> = lotable.iter().collect();
         assert_eq!(res.len(), 12);
@@ -404,20 +404,20 @@ mod lotable_tests {
         let lotable: LOTable<String, u64> = LOTable::new();
 
         (0..100).into_iter().for_each(|_i| {
-            lotable.insert("Saudade0".to_string(), 123123);
-            lotable.insert("Saudade0".to_string(), 123);
-            lotable.insert("Saudade1".to_string(), 123123);
-            lotable.insert("Saudade2".to_string(), 123123);
-            lotable.insert("Saudade3".to_string(), 123123);
-            lotable.insert("Saudade4".to_string(), 123123);
-            lotable.insert("Saudade5".to_string(), 123123);
+            lotable.insert("Saudade0".to_string(), 123123).unwrap();
+            lotable.insert("Saudade0".to_string(), 123).unwrap();
+            lotable.insert("Saudade1".to_string(), 123123).unwrap();
+            lotable.insert("Saudade2".to_string(), 123123).unwrap();
+            lotable.insert("Saudade3".to_string(), 123123).unwrap();
+            lotable.insert("Saudade4".to_string(), 123123).unwrap();
+            lotable.insert("Saudade5".to_string(), 123123).unwrap();
 
-            lotable.insert("123123".to_string(), 123123);
-            lotable.insert("1231231".to_string(), 123123);
-            lotable.insert("1231232".to_string(), 123123);
-            lotable.insert("1231233".to_string(), 123123);
-            lotable.insert("1231234".to_string(), 123123);
-            lotable.insert("1231235".to_string(), 123123);
+            lotable.insert("123123".to_string(), 123123).unwrap();
+            lotable.insert("1231231".to_string(), 123123).unwrap();
+            lotable.insert("1231232".to_string(), 123123).unwrap();
+            lotable.insert("1231233".to_string(), 123123).unwrap();
+            lotable.insert("1231234".to_string(), 123123).unwrap();
+            lotable.insert("1231235".to_string(), 123123).unwrap();
 
             let res: Vec<u64> = lotable.values().into_iter().collect();
             // dbg!(&res);
@@ -429,7 +429,7 @@ mod lotable_tests {
         assert_eq!(res.len(), 0);
 
         (0..1_000).into_iter().for_each(|i| {
-            lotable.insert(format!("{}", i), i as u64);
+            lotable.insert(format!("{}", i), i as u64).unwrap();
 
             let resvals: Vec<u64> = lotable.values().into_iter().collect();
             // dbg!(&resvals);
@@ -441,7 +441,7 @@ mod lotable_tests {
         assert_eq!(res.len(), 0);
 
         (0..1_000).into_iter().for_each(|i| {
-            lotable.insert(format!("{}", i), i as u64);
+            lotable.insert(format!("{}", i), i as u64).unwrap();
 
             let reskeys: Vec<String> = lotable.keys().into_iter().collect();
             // dbg!(&reskeys);

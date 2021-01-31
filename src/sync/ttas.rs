@@ -2,7 +2,8 @@ use super::ifaces::LockIface;
 use std::fmt;
 use std::{
     cell::UnsafeCell,
-    sync::atomic::{spin_loop_hint, AtomicBool, Ordering},
+    hint::spin_loop,
+    sync::atomic::{AtomicBool, Ordering},
 };
 use std::{
     marker::PhantomData as marker,
@@ -149,7 +150,7 @@ where
     fn lock(&self) {
         'lock: loop {
             while let Some(true) = Some(self.acquired.load(Ordering::SeqCst)) {
-                spin_loop_hint();
+                spin_loop();
             }
             if !self.acquired.swap(true, Ordering::SeqCst) {
                 break 'lock;

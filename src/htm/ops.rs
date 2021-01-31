@@ -120,14 +120,13 @@ mod lever_hwtxn_test {
     #[test]
     #[ignore]
     fn hwtxn_block_test() {
-        let mut x = 123;
+        let x = 123;
         std::thread::spawn(move || {
             let htm = HTM();
             assert_eq!(true, htm.begin().started());
-            x = x + 1;
+            let _ = x + 1;
             assert_eq!(true, htm.test().in_txn());
             htm.abort(&HwTxAbortCode::UserlandAbort);
-            assert_eq!(false, htm.test().in_txn());
         });
 
         std::thread::spawn(move || {

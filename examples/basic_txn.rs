@@ -24,7 +24,8 @@ fn main() {
         let mut churned = t.read(&customers);
         churned += 1;
         t.write(&mut customers, churned);
-    });
+    })
+    .unwrap();
 
     println!(
         "I have {} customers right now. I gained 1.",
@@ -37,7 +38,8 @@ fn main() {
         let mut churned = *customers;
         churned -= 123_000;
         t.write(&mut customers, churned);
-    });
+    })
+    .unwrap();
 
     println!(
         "I have {} customers right now. I think I lost a lot.",

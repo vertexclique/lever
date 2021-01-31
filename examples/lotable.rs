@@ -15,7 +15,7 @@ fn main() {
             .name(format!("t_{}", thread_no))
             .spawn(move || {
                 let key = format!("{}", thread_no);
-                lotable.insert(key.clone(), thread_no);
+                lotable.insert(key.clone(), thread_no).unwrap();
                 let _ = lotable.get(&key).unwrap();
             })
             .unwrap();
