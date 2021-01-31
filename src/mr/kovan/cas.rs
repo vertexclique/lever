@@ -19,6 +19,23 @@ macro_rules! lfref_impl {
         pub const fn lfref_step() -> $dt {
             !(1_usize << (std::mem::size_of::<$dt>() * 4_usize))
         }
+
+        pub const fn lf_merger(l: $dt, r: $dt) -> $dt {
+            #[cfg(any(
+                target_arch = "x86",
+                target_arch = "x86_64",
+            ))] {
+                l + r
+            }
+
+            #[cfg(not(any(
+                target_arch = "x86",
+                target_arch = "x86_64",
+            )))]
+            {
+                l | r
+            }
+        }
     };
 }
 
