@@ -48,6 +48,8 @@ criterion = "0.3"
 rand = "0.7"
 rand_distr = "0.2"
 rayon = "1"
+crossbeam-utils = "0.8.1"
+trybuild = "1.0.39"
 
 [[bench]]
 name = "op_ser_benches"

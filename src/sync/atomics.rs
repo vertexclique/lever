@@ -101,8 +101,8 @@ impl<T: Sized> Drop for AtomicBox<T> {
     }
 }
 
-unsafe impl<T: Sized> Sync for AtomicBox<T> {}
-unsafe impl<T: Sized> Send for AtomicBox<T> {}
+unsafe impl<T: Sized + Sync> Sync for AtomicBox<T> {}
+unsafe impl<T: Sized + Send> Send for AtomicBox<T> {}
 
 #[cfg(test)]
 mod tests {
