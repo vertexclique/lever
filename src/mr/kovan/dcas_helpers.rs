@@ -1,3 +1,5 @@
+use cuneiform::*;
+
 //////////////////////////
 // Ref counting
 //////////////////////////
@@ -21,6 +23,7 @@ macro_rules! lfref_impl {
         }
 
         pub const fn lf_merger(l: $dt, r: $dt) -> $dt {
+            // LEA optimization
             #[cfg(any(
                 target_arch = "x86",
                 target_arch = "x86_64",
@@ -44,3 +47,10 @@ macro_rules! lfref_impl {
 pub const LFREF_LINK: usize = 0;
 #[cfg(target_endian = "big")]
 pub const LFREF_LINK: usize = 1;
+
+#[boundary_size]
+type BS = ();
+
+pub const fn lf_cache_bytes() -> usize {
+    BOUNDARY_SIZE as _
+}

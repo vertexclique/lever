@@ -152,3 +152,101 @@ pub const fn load_lohi_split<D>() -> bool {
 pub const fn cmpxchg_lohi_split<D>() -> bool {
     false
 }
+
+//////////////////////
+// Epoch type aliases for 64-bit archs
+//////////////////////
+
+#[cfg(any(
+    target_arch = "x86_64",
+    target_arch = "aarch64",
+    target_arch = "powerpc64",
+    target_arch = "mips64"
+))]
+pub type LFEpoch = u64;
+#[cfg(any(
+    target_arch = "x86_64",
+    target_arch = "aarch64",
+    target_arch = "powerpc64",
+    target_arch = "mips64"
+))]
+pub type LFEpochSigned = i64;
+#[cfg(any(
+    target_arch = "x86_64",
+    target_arch = "aarch64",
+    target_arch = "powerpc64",
+    target_arch = "mips64"
+))]
+pub type LFAtomic = AtomicU64;
+// pub type LFAtomicBig = 128BitDCASSingleCompareDoubleSwap;
+
+//////////////////////
+// Epoch type aliases for 32-bit archs
+//////////////////////
+
+// x86 should still use 64-bit vars
+#[cfg(target_arch = "x86")]
+pub type LFEpoch = u64;
+#[cfg(target_arch = "x86")]
+pub type LFEpochSigned = i64;
+
+// Rest of the architectures
+#[cfg(any(
+target_arch = "arm",
+target_arch = "powerpc",
+target_arch = "mips"
+))]
+pub type LFEpoch = u32;
+#[cfg(any(
+target_arch = "arm",
+target_arch = "powerpc",
+target_arch = "mips"
+))]
+pub type LFEpochSigned = i32;
+#[cfg(any(
+target_arch = "x86",
+target_arch = "arm",
+target_arch = "powerpc",
+target_arch = "mips"
+))]
+pub type LFAtomic = AtomicU32;
+// pub type LFAtomicBig = 128BitDCASSingleCompareDoubleSwap;
+
+//////////////////////
+// Epoch type aliases for all the other architectures. Equivalent to the target pointer size.
+//////////////////////
+
+#[cfg(not(any(
+target_arch = "x86_64",
+target_arch = "aarch64",
+target_arch = "powerpc64",
+target_arch = "mips64",
+target_arch = "x86",
+target_arch = "arm",
+target_arch = "powerpc",
+target_arch = "mips"
+)))]
+pub type LFEpoch = usize;
+#[cfg(not(any(
+target_arch = "x86_64",
+target_arch = "aarch64",
+target_arch = "powerpc64",
+target_arch = "mips64",
+target_arch = "x86",
+target_arch = "arm",
+target_arch = "powerpc",
+target_arch = "mips"
+)))]
+pub type LFEpochSigned = isize;
+#[cfg(not(any(
+target_arch = "x86_64",
+target_arch = "aarch64",
+target_arch = "powerpc64",
+target_arch = "mips64",
+target_arch = "x86",
+target_arch = "arm",
+target_arch = "powerpc",
+target_arch = "mips"
+)))]
+pub type LFAtomic = AtomicUsize;
+// pub type LFAtomicBig = 128BitDCASSingleCompareDoubleSwap;
