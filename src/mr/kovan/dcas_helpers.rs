@@ -24,17 +24,12 @@ macro_rules! lfref_impl {
 
         pub const fn lf_merger(l: $dt, r: $dt) -> $dt {
             // LEA optimization
-            #[cfg(any(
-                target_arch = "x86",
-                target_arch = "x86_64",
-            ))] {
+            #[cfg(any(target_arch = "x86", target_arch = "x86_64",))]
+            {
                 l + r
             }
 
-            #[cfg(not(any(
-                target_arch = "x86",
-                target_arch = "x86_64",
-            )))]
+            #[cfg(not(any(target_arch = "x86", target_arch = "x86_64",)))]
             {
                 l | r
             }
@@ -53,4 +48,17 @@ type BS = ();
 
 pub const fn lf_cache_bytes() -> usize {
     BOUNDARY_SIZE as _
+}
+
+#[cfg(test)]
+mod dcas_helpers_tests {
+    use crate::mr::kovan::dcas_helpers::*;
+
+    #[test]
+    fn test_check_cache_line_cas_boundary() {
+        #[cfg(target_arch = "x86_64")]
+        assert_eq!(lf_cache_bytes(), 128_usize);
+
+        assert!(true);
+    }
 }

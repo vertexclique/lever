@@ -42,8 +42,8 @@ anyhow = "1.0"
 thiserror = "1.0"
 itertools = "0.10"
 slice-group-by = "0.2.6"
-cuneiform = "0.1.1"
-cuneiform-fields = "0.1.0"
+cuneiform = "0.1"
+cuneiform-fields = "0.1"
 
 [dev-dependencies]
 criterion = "0.3"

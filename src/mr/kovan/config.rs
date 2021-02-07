@@ -1,3 +1,5 @@
+use std::sync::atomic::*;
+
 pub const fn lfatomic_width() -> usize {
     #[cfg(any(
         target_arch = "x86_64",
@@ -191,23 +193,15 @@ pub type LFEpoch = u64;
 pub type LFEpochSigned = i64;
 
 // Rest of the architectures
-#[cfg(any(
-target_arch = "arm",
-target_arch = "powerpc",
-target_arch = "mips"
-))]
+#[cfg(any(target_arch = "arm", target_arch = "powerpc", target_arch = "mips"))]
 pub type LFEpoch = u32;
-#[cfg(any(
-target_arch = "arm",
-target_arch = "powerpc",
-target_arch = "mips"
-))]
+#[cfg(any(target_arch = "arm", target_arch = "powerpc", target_arch = "mips"))]
 pub type LFEpochSigned = i32;
 #[cfg(any(
-target_arch = "x86",
-target_arch = "arm",
-target_arch = "powerpc",
-target_arch = "mips"
+    target_arch = "x86",
+    target_arch = "arm",
+    target_arch = "powerpc",
+    target_arch = "mips"
 ))]
 pub type LFAtomic = AtomicU32;
 // pub type LFAtomicBig = 128BitDCASSingleCompareDoubleSwap;
@@ -217,36 +211,36 @@ pub type LFAtomic = AtomicU32;
 //////////////////////
 
 #[cfg(not(any(
-target_arch = "x86_64",
-target_arch = "aarch64",
-target_arch = "powerpc64",
-target_arch = "mips64",
-target_arch = "x86",
-target_arch = "arm",
-target_arch = "powerpc",
-target_arch = "mips"
+    target_arch = "x86_64",
+    target_arch = "aarch64",
+    target_arch = "powerpc64",
+    target_arch = "mips64",
+    target_arch = "x86",
+    target_arch = "arm",
+    target_arch = "powerpc",
+    target_arch = "mips"
 )))]
 pub type LFEpoch = usize;
 #[cfg(not(any(
-target_arch = "x86_64",
-target_arch = "aarch64",
-target_arch = "powerpc64",
-target_arch = "mips64",
-target_arch = "x86",
-target_arch = "arm",
-target_arch = "powerpc",
-target_arch = "mips"
+    target_arch = "x86_64",
+    target_arch = "aarch64",
+    target_arch = "powerpc64",
+    target_arch = "mips64",
+    target_arch = "x86",
+    target_arch = "arm",
+    target_arch = "powerpc",
+    target_arch = "mips"
 )))]
 pub type LFEpochSigned = isize;
 #[cfg(not(any(
-target_arch = "x86_64",
-target_arch = "aarch64",
-target_arch = "powerpc64",
-target_arch = "mips64",
-target_arch = "x86",
-target_arch = "arm",
-target_arch = "powerpc",
-target_arch = "mips"
+    target_arch = "x86_64",
+    target_arch = "aarch64",
+    target_arch = "powerpc64",
+    target_arch = "mips64",
+    target_arch = "x86",
+    target_arch = "arm",
+    target_arch = "powerpc",
+    target_arch = "mips"
 )))]
 pub type LFAtomic = AtomicUsize;
 // pub type LFAtomicBig = 128BitDCASSingleCompareDoubleSwap;
