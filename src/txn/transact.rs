@@ -597,7 +597,7 @@ mod txn_tests {
         }
 
         for t in threads.into_iter() {
-            t.join().unwrap();
+            let _ = t.join().unwrap();
         }
     }
 

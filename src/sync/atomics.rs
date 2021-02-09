@@ -27,8 +27,14 @@ impl<T: Sized> AtomicBox<T> {
         Arc::into_raw(total) as *mut T
     }
 
-    fn compare_and_swap(&self, current: *mut T, new: *mut T, order: Ordering) -> *mut T {
-        self.ptr.compare_and_swap(current, new, order)
+    fn compare_exchange(
+        &self,
+        current: *mut T,
+        new: *mut T,
+        success: Ordering,
+        failure: Ordering,
+    ) -> Result<*mut T, *mut T> {
+        self.ptr.compare_exchange(current, new, success, failure)
     }
 
     fn take(&self) -> Arc<T> {
@@ -40,7 +46,7 @@ impl<T: Sized> AtomicBox<T> {
                 continue;
             }
 
-            if self.compare_and_swap(curr, null, Ordering::AcqRel) == curr {
+            if self.compare_exchange(curr, null, Ordering::AcqRel, Ordering::AcqRel) == Ok(curr) {
                 return unsafe { Arc::from_raw(curr) };
             }
         }

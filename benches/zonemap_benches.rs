@@ -1,4 +1,4 @@
-use criterion::{criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion, Throughput};
+use criterion::{criterion_group, criterion_main, BatchSize, Criterion};
 use lever::index::zonemap::ZoneMap;
 
 fn bench_zonemap_selected(c: &mut Criterion) {

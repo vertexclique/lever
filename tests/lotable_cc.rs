@@ -6,7 +6,7 @@ use std::sync::Arc;
 fn lotable_concurrent() {
     let lotable = {
         let table: LOTable<String, u64> = LOTable::new();
-        table.insert("data".into(), 1_u64);
+        table.insert("data".into(), 1_u64).unwrap();
         Arc::new(table)
     };
 
@@ -24,7 +24,7 @@ fn lotable_concurrent() {
                 } else {
                     // Writer threads
                     let data = lotable.get(&"data".to_string()).unwrap();
-                    lotable.insert("data".into(), data + 1);
+                    lotable.insert("data".into(), data + 1).unwrap();
                 }
             })
             .unwrap();

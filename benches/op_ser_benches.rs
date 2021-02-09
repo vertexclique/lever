@@ -39,13 +39,15 @@ fn rw_pareto(txn: Txn, mut vars: (f64, TVar<LTable<String, String>>)) {
     if vars.0 < 0.8_f64 {
         txn.begin(|t: &mut Txn| {
             t.read(&vars.1);
-        });
+        })
+        .unwrap();
     } else {
         txn.begin(|t: &mut Txn| {
             let mut x = t.read(&vars.1);
             x.insert("RoboCop".into(), "Annihilation".into());
             t.write(&mut vars.1, x.clone());
-        });
+        })
+        .unwrap();
     }
 }
 
@@ -81,7 +83,8 @@ fn pure_write(txn: Txn, mut vars: TVar<LTable<String, String>>) {
         let mut x = t.read(&vars);
         x.insert("RoboCop".into(), "Annihilation".into());
         t.write(&mut vars, x.clone());
-    });
+    })
+    .unwrap();
 }
 
 fn bench_pure_write(c: &mut Criterion) {

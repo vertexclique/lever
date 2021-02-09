@@ -330,19 +330,19 @@ mod hoptable_tests {
     #[test]
     fn hoptable_inserts() {
         let hoptable: HOPTable<String, u64> = HOPTable::new();
-        hoptable.insert("Saudade0".to_string(), 1);
-        hoptable.insert("Saudade1".to_string(), 2);
-        hoptable.insert("Saudade2".to_string(), 3);
-        hoptable.insert("Saudade3".to_string(), 4);
-        hoptable.insert("Saudade4".to_string(), 321321);
-        hoptable.insert("Saudade5".to_string(), 6);
+        hoptable.insert("Saudade0".to_string(), 1).unwrap();
+        hoptable.insert("Saudade1".to_string(), 2).unwrap();
+        hoptable.insert("Saudade2".to_string(), 3).unwrap();
+        hoptable.insert("Saudade3".to_string(), 4).unwrap();
+        hoptable.insert("Saudade4".to_string(), 321321).unwrap();
+        hoptable.insert("Saudade5".to_string(), 6).unwrap();
 
-        hoptable.insert("123123".to_string(), 10);
-        hoptable.insert("1231231".to_string(), 11);
-        hoptable.insert("1231232".to_string(), 12);
-        hoptable.insert("1231233".to_string(), 13);
-        hoptable.insert("1231234".to_string(), 14);
-        hoptable.insert("1231235".to_string(), 15);
+        hoptable.insert("123123".to_string(), 10).unwrap();
+        hoptable.insert("1231231".to_string(), 11).unwrap();
+        hoptable.insert("1231232".to_string(), 12).unwrap();
+        hoptable.insert("1231233".to_string(), 13).unwrap();
+        hoptable.insert("1231234".to_string(), 14).unwrap();
+        hoptable.insert("1231235".to_string(), 15).unwrap();
 
         hoptable.trial();
         assert_eq!(hoptable.get(&"Saudade4".to_string()), Some(321321));
@@ -351,20 +351,20 @@ mod hoptable_tests {
     #[test]
     fn hoptable_removes() {
         let hoptable: HOPTable<String, u64> = HOPTable::new();
-        hoptable.insert("Saudade0".to_string(), 1);
+        hoptable.insert("Saudade0".to_string(), 1).unwrap();
         assert_eq!(hoptable.get(&"Saudade0".to_string()), Some(1));
 
-        hoptable.remove(&"Saudade0".to_string());
+        hoptable.remove(&"Saudade0".to_string()).unwrap();
         assert_eq!(hoptable.get(&"Saudade0".to_string()), None);
     }
 
     #[test]
     fn hoptable_upsert() {
         let hoptable: HOPTable<String, u64> = HOPTable::new();
-        hoptable.insert("Saudade0".to_string(), 1);
+        hoptable.insert("Saudade0".to_string(), 1).unwrap();
         assert_eq!(hoptable.get(&"Saudade0".to_string()), Some(1));
 
-        hoptable.insert("Saudade0".to_string(), 2);
+        hoptable.insert("Saudade0".to_string(), 2).unwrap();
         assert_eq!(hoptable.get(&"Saudade0".to_string()), Some(2));
     }
 

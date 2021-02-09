@@ -147,7 +147,8 @@ mod ltable_tests {
             let x = t.read(&tvar);
             dbg!(&x);
             assert_eq!(x.get("taetigkeit".into()), Some(&String::from("ingenieur")));
-        });
+        })
+        .unwrap();
 
         res = txn
             .begin(|t| {
@@ -214,7 +215,8 @@ mod ltable_tests {
             let x = t.read(&tvar);
             dbg!(&x);
             assert_eq!(x.get("taetigkeit".into()), Some(&String::from("ingenieur")));
-        });
+        })
+        .unwrap();
 
         res = txn
             .begin(|t| {
@@ -346,7 +348,8 @@ mod ltable_tests {
                                     (*alice_accounts[1]).clear();
                                     (*alice_accounts[1]).insert("alice2_init".into(), 50);
                                     (*bob_account).clear();
-                                });
+                                })
+                                .unwrap();
                             }
                         }
                     })
@@ -402,7 +405,7 @@ mod ltable_tests {
                                 // try to transfer
                                 let withdrawal_account = thread_no % alice_accounts.len();
 
-                                txn.begin(|t| {
+                                let _ = txn.begin(|t| {
                                     let mut a0 = t.read(&alice_accounts[0]);
                                     let mut a1 = t.read(&alice_accounts[1]);
                                     let mut b = t.read(&bob_account);
@@ -452,7 +455,7 @@ mod ltable_tests {
                                 );
 
                                 // reset accounts
-                                txn.begin(|_t| {
+                                let _ = txn.begin(|_t| {
                                     (*alice_accounts[0]).clear();
                                     (*alice_accounts[0]).insert("alice1_init".into(), 50);
                                     (*alice_accounts[1]).clear();
