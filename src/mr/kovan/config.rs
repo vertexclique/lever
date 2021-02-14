@@ -180,6 +180,20 @@ pub type LFEpochSigned = i64;
     target_arch = "mips64"
 ))]
 pub type LFAtomic = AtomicU64;
+#[cfg(any(
+target_arch = "x86_64",
+target_arch = "aarch64",
+target_arch = "powerpc64",
+target_arch = "mips64"
+))]
+pub type AtomicLFEpoch = AtomicU64;
+#[cfg(any(
+target_arch = "x86_64",
+target_arch = "aarch64",
+target_arch = "powerpc64",
+target_arch = "mips64"
+))]
+pub type AtomicGenericT = AtomicUsize;
 // pub type LFAtomicBig = 128BitDCASSingleCompareDoubleSwap;
 
 //////////////////////

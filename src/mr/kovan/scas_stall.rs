@@ -1,8 +1,10 @@
 use super::config::*;
 use cuneiform_fields::alignas::AlignAs16;
 use cuneiform_fields::hermetic::HermeticPadding;
-use std::mem::ManuallyDrop;
+use std::mem::{ManuallyDrop, MaybeUninit};
 use std::sync::atomic::*;
+use cuneiform_fields::arch::ArchPadding;
+use crate::mr::kovan::dcas_helpers::lf_cache_bytes;
 
 //////////////////////////
 // Common implementation for single cas, can be altered by GenericT size.
@@ -48,6 +50,50 @@ union StallMrBlock {
 #[repr(C)]
 struct StallMrNode(StallMrBlock);
 
+// Actual implementation following
+
+#[repr(C)]
+struct StallMrVector {
+    // Atomic<GenericT> is a variant that was expected.
+    head: ArchPadding<AtomicGenericT>,
+    access: ArchPadding<AtomicLFEpoch>,
+    _priv: ArchPadding<MaybeUninit<[u8; lf_cache_bytes()]>>
+}
+
+#[repr(C)]
+struct StallMr;
+
+#[repr(C)]
+struct StallMrFree {
+    mr: *mut StallMr,
+    mr_node: *mut StallMrNode
+}
+
+impl StallMr {
+    #[inline(always)]
+    pub fn link(&self, size: usize) -> GenericT {
+        todo!("link")
+    }
+
+    #[inline(always)]
+    pub fn ack(&self, size: usize) -> GenericT {
+        todo!("ack")
+    }
+}
+
+// extern "C" {
+//     pub type lfbsmrw;
+//     pub type lfbsmrw_node;
+// }
+// pub type lfbsmrw_free_t
+// =
+// Option<unsafe extern "C" fn(_: *mut lfbsmrw, _: *mut lfbsmrw_node) -> ()>;
+// unsafe fn main_0() -> libc::c_int {
+//     let mut a: lfbsmrw_free_t = None;
+//     return 0;
+// }
+
+// Tests
 mod scas_stall_tests {
     use super::*;
 
