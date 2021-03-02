@@ -1,10 +1,10 @@
 use super::config::*;
+use super::dcas_helpers::lf_cache_bytes;
 use cuneiform_fields::alignas::AlignAs16;
 use cuneiform_fields::hermetic::HermeticPadding;
 use std::mem::{ManuallyDrop, MaybeUninit};
 use std::sync::atomic::*;
 use cuneiform_fields::arch::ArchPadding;
-use crate::mr::kovan::dcas_helpers::lf_cache_bytes;
 
 //////////////////////////
 // Common implementation for single cas, can be altered by GenericT size.
@@ -61,7 +61,10 @@ struct StallMrVector {
 }
 
 #[repr(C)]
-struct StallMr;
+struct StallMr {
+    global: ArchPadding<AtomicLFEpoch>,
+    vectors: Vec<StallMrVector>
+}
 
 #[repr(C)]
 struct StallMrFree {
@@ -71,13 +74,31 @@ struct StallMrFree {
 
 impl StallMr {
     #[inline(always)]
-    pub fn link(&self, size: usize) -> GenericT {
-        todo!("link")
+    pub fn init(&mut self) {
+        self.vectors.iter_mut().for_each(|r| {
+            r.head = ArchPadding::new(AtomicGenericT::default());
+            r.access = ArchPadding::new(AtomicLFEpoch::default());
+        });
+        self.global = ArchPadding::new(AtomicLFEpoch::default());
     }
 
     #[inline(always)]
+    pub fn link(&self, vec: usize) -> GenericT {
+        self.vectors[vec].access.load(Ordering::Acquire) as GenericT & !0x1
+    }
+
+    #[inline(always)]
+    pub fn access(&self, vec: usize, access: LFEpoch, epoch: LFEpoch) -> LFEpoch {
+        self.vectors[vec].access.store(epoch as _, Ordering::SeqCst);
+        epoch
+    }
+
+    #[inline(always)]
+    pub fn enter(&self, vec: usize, order: usize, smr: &mut StallMrHandle, base: *const (), )
+
+    #[inline(always)]
     pub fn ack(&self, size: usize) -> GenericT {
-        todo!("ack")
+        unimplemented!("ack")
     }
 }
 

@@ -23,8 +23,14 @@ Lever is using MVCC model to manage concurrency. It supplies building blocks for
 transactional endpoints, databases and systems. Unblocked execution path is main aim for lever while 
 not sacrificing failover mechanisms.
 
-Lever provides STM, lock-free, wait-free synchronization primitives and various other tools to facilitate writing
-transactional in-memory systems.
+Lever provides lock-free and some wait-free synchronization primitives and various other tools to facilitate writing
+transactional systems.
+
+# Index
+Lever contains indexes and lookup data structures for fast lookup for hierarchical data.
+
+# Stats
+Data structures for query optimizations, counters, and probabilistic data structures resides in here.
 
 # Sync
 Synchronization primitives which can allow users to write concurrent task structures. Lever don't have runtime or async code.
