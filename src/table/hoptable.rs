@@ -31,8 +31,8 @@ enum KeyState {
 /// Also best for buffer management.
 pub struct HOPTable<K, V, S = RandomState>
 where
-    K: 'static + PartialEq + Eq + Hash + Clone + Send + Sync,
-    V: 'static + Clone + Send + Sync,
+    K: PartialEq + Eq + Hash + Clone + Send + Sync,
+    V: Clone + Send + Sync,
     S: BuildHasher,
 {
     segments: Vec<Bucket<K, V>>,
