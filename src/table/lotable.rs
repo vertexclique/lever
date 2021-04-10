@@ -15,6 +15,72 @@ use std::sync::Arc;
 
 const DEFAULT_CAP: usize = 1024;
 
+pub struct LOTableBuilder {
+    cc: TransactionConcurrency,
+    iso: TransactionIsolation,
+    timeout: usize,
+    size: usize,
+    label: String,
+    cap: usize,
+    hasher: RandomState,
+}
+
+impl LOTableBuilder {
+    pub fn new() -> Self {
+        Self {
+            cc: TransactionConcurrency::Optimistic,
+            iso: TransactionIsolation::RepeatableRead,
+            timeout: 100_usize,
+            size: 1_usize,
+            label: "default".into(),
+            cap: DEFAULT_CAP,
+            hasher: RandomState::new(),
+        }
+    }
+
+    pub fn with_concurrency(self, cc: TransactionConcurrency) -> Self {
+        Self { cc, ..self }
+    }
+
+    pub fn with_isolation(self, iso: TransactionIsolation) -> Self {
+        Self { iso, ..self }
+    }
+
+    pub fn with_timeout(self, timeout: usize) -> Self {
+        Self { timeout, ..self }
+    }
+    pub fn with_size(self, size: usize) -> Self {
+        Self { size, ..self }
+    }
+
+    pub fn with_label(self, label: String) -> Self {
+        Self { label, ..self }
+    }
+
+    pub fn with_capacity(self, cap: usize) -> Self {
+        Self { cap, ..self }
+    }
+
+    pub fn with_hasher(self, hasher: RandomState) -> Self {
+        Self { hasher, ..self }
+    }
+
+    pub fn build<K, V>(self) -> LOTable<K, V>
+    where
+        K: PartialEq + Eq + Hash + Clone + Send + Sync,
+        V: Clone + Send + Sync,
+    {
+        let txn_man = Arc::new(TxnManager {
+            txid: Arc::new(AtomicU64::new(GLOBAL_VCLOCK.load(Ordering::SeqCst))),
+        });
+
+        let txn: Arc<Txn> =
+            Arc::new(txn_man.txn_build(self.cc, self.iso, self.timeout, self.size, self.label));
+
+        LOTable::with_cap_hash_and_txn(self.cap, self.hasher, txn)
+    }
+}
+
 #[derive(Clone)]
 ///
 /// Lever Transactional Table implementation with [Optimistic](TransactionConcurrency::Optimistic)
@@ -54,6 +120,18 @@ where
     V: Clone + Send + Sync,
     S: BuildHasher,
 {
+    fn with_cap_hash_and_txn(cap: usize, hasher: S, txn: Arc<Txn>) -> LOTable<K, V, S> {
+        let txn_man = Arc::new(TxnManager {
+            txid: Arc::new(AtomicU64::new(GLOBAL_VCLOCK.load(Ordering::SeqCst))),
+        });
+
+        Self {
+            latch: vec![TVar::new(Arc::new(AtomicBox::new(Container(HashMap::default())))); cap],
+            txn_man,
+            txn,
+            hash_builder: hasher,
+        }
+    }
     fn with_capacity_and_hasher(cap: usize, hasher: S) -> LOTable<K, V, S> {
         let txn_man = Arc::new(TxnManager {
             txid: Arc::new(AtomicU64::new(GLOBAL_VCLOCK.load(Ordering::SeqCst))),
