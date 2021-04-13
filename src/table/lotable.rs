@@ -105,6 +105,10 @@ where
     K: PartialEq + Eq + Hash + Clone + Send + Sync,
     V: Clone + Send + Sync,
 {
+    pub fn builder() -> LOTableBuilder {
+        LOTableBuilder::new()
+    }
+
     pub fn new() -> Self {
         Self::with_capacity(DEFAULT_CAP)
     }
