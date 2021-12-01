@@ -1,5 +1,5 @@
 use crate::sync::arcunique::ArcUnique;
-use anyhow::*;
+use anyhow::Result;
 use std::convert::TryFrom;
 use std::ops::Deref;
 use std::sync::atomic::{AtomicPtr, Ordering};
@@ -40,7 +40,10 @@ impl<T: Sized> AtomicBox<T> {
     }
 
     fn compare_and_swap(&self, current: *mut T, new: *mut T, order: Ordering) -> *mut T {
-        self.ptr.compare_exchange(current, new, order, Self::strongest_failure_ordering(order)).unwrap()
+        match self.ptr.compare_exchange(current, new, order, Self::strongest_failure_ordering(order)) {
+            Ok(x) => x,
+            Err(x) => x
+        }
     }
 
     fn take(&self) -> Arc<T> {
