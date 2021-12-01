@@ -35,14 +35,19 @@ impl<T: Sized> AtomicBox<T> {
             SeqCst => SeqCst,
             Acquire => Acquire,
             AcqRel => Acquire,
-            _ => unsafe { std::hint::unreachable_unchecked() }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 
     fn compare_and_swap(&self, current: *mut T, new: *mut T, order: Ordering) -> *mut T {
-        match self.ptr.compare_exchange(current, new, order, Self::strongest_failure_ordering(order)) {
+        match self.ptr.compare_exchange(
+            current,
+            new,
+            order,
+            Self::strongest_failure_ordering(order),
+        ) {
             Ok(x) => x,
-            Err(x) => x
+            Err(x) => x,
         }
     }
 

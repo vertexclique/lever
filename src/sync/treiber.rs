@@ -1,7 +1,7 @@
 use std::mem::ManuallyDrop;
 use std::ptr;
-use std::sync::atomic::Ordering::{Acquire, Relaxed, Release};
 use std::sync::atomic::Ordering;
+use std::sync::atomic::Ordering::{Acquire, Relaxed, Release};
 
 use crossbeam_epoch as epoch;
 use crossbeam_epoch::{Atomic, Owned};
@@ -41,7 +41,7 @@ impl<T> TreiberStack<T> {
             SeqCst => SeqCst,
             Acquire => Acquire,
             AcqRel => Acquire,
-            _ => unsafe { std::hint::unreachable_unchecked() }
+            _ => unsafe { std::hint::unreachable_unchecked() },
         }
     }
 
@@ -58,7 +58,13 @@ impl<T> TreiberStack<T> {
             let head = self.head.load(Relaxed, &guard);
             n.next.store(head, Relaxed);
 
-            match self.head.compare_exchange(head, n, Release, Self::strongest_failure_ordering(Release), &guard) {
+            match self.head.compare_exchange(
+                head,
+                n,
+                Release,
+                Self::strongest_failure_ordering(Release),
+                &guard,
+            ) {
                 Ok(_) => break,
                 Err(e) => n = e.new,
             }
@@ -79,7 +85,13 @@ impl<T> TreiberStack<T> {
 
                     if self
                         .head
-                        .compare_exchange(head, next, Relaxed, Self::strongest_failure_ordering(Relaxed), &guard)
+                        .compare_exchange(
+                            head,
+                            next,
+                            Relaxed,
+                            Self::strongest_failure_ordering(Relaxed),
+                            &guard,
+                        )
                         .is_ok()
                     {
                         unsafe {
