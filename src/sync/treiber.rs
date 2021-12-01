@@ -1,5 +1,6 @@
 use std::mem::ManuallyDrop;
 use std::ptr;
+use std::sync::atomic::Ordering;
 use std::sync::atomic::Ordering::{Acquire, Relaxed, Release};
 
 use crossbeam_epoch as epoch;
@@ -32,6 +33,18 @@ impl<T> TreiberStack<T> {
         }
     }
 
+    fn strongest_failure_ordering(order: Ordering) -> Ordering {
+        use Ordering::*;
+        match order {
+            Release => Relaxed,
+            Relaxed => Relaxed,
+            SeqCst => SeqCst,
+            Acquire => Acquire,
+            AcqRel => Acquire,
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+
     /// Pushes a value on top of the stack.
     pub fn push(&self, t: T) {
         let mut n = Owned::new(Node {
@@ -45,7 +58,13 @@ impl<T> TreiberStack<T> {
             let head = self.head.load(Relaxed, &guard);
             n.next.store(head, Relaxed);
 
-            match self.head.compare_and_set(head, n, Release, &guard) {
+            match self.head.compare_exchange(
+                head,
+                n,
+                Release,
+                Self::strongest_failure_ordering(Release),
+                &guard,
+            ) {
                 Ok(_) => break,
                 Err(e) => n = e.new,
             }
@@ -66,7 +85,13 @@ impl<T> TreiberStack<T> {
 
                     if self
                         .head
-                        .compare_and_set(head, next, Relaxed, &guard)
+                        .compare_exchange(
+                            head,
+                            next,
+                            Relaxed,
+                            Self::strongest_failure_ordering(Relaxed),
+                            &guard,
+                        )
                         .is_ok()
                     {
                         unsafe {
