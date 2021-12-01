@@ -4,7 +4,7 @@ use crate::txn::prelude::*;
 use std::collections::hash_map::{Iter, Keys, RandomState};
 use std::collections::HashMap;
 
-use anyhow::*;
+use anyhow::Result;
 use std::collections::hash_map;
 use std::fmt;
 use std::hash::Hash;
