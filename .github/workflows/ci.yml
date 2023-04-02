@@ -57,6 +57,8 @@ jobs:
       - name: tests nightly - linux
         if: matrix.version == 'nightly' && matrix.os != 'macOS-latest' && matrix.os != 'windows-latest'
         uses: actions-rs/cargo@v1
+        env:
+          RUST_BACKTRACE=full
         with:
           command: test
           args: --features nightly --all
@@ -65,12 +67,16 @@ jobs:
       - name: tests nightly - windows
         if: matrix.version == 'nightly' && matrix.os != 'macOS-latest' && matrix.os != 'ubuntu-latest'
         uses: actions-rs/cargo@v1
+        env:
+          RUST_BACKTRACE=full
         with:
           command: test
 
       - name: tests stable
         if: matrix.version == 'stable'
         uses: actions-rs/cargo@v1
+        env:
+          RUST_BACKTRACE=full
         with:
           command: test
           args: --all
