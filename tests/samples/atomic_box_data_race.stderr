@@ -1,0 +1,30 @@
+error[E0277]: `Cell<RefOrInt<'_>>` cannot be shared between threads safely
+  --> tests/samples/atomic_box_data_race.rs:20:17
+   |
+20 |           s.spawn(move |_| {
+   |  ___________-----_^
+   | |           |
+   | |           required by a bound introduced by this call
+21 | |             let smuggled_cell = atomic_box.get();
+22 | |
+23 | |             loop {
+...  |
+27 | |             }
+28 | |         });
+   | |_________^ `Cell<RefOrInt<'_>>` cannot be shared between threads safely
+   |
+   = help: the trait `Sync` is not implemented for `Cell<RefOrInt<'_>>`
+   = note: if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock`
+   = note: required for `&Cell<RefOrInt<'_>>` to implement `Send`
+   = note: 1 redundant requirement hidden
+   = note: required for `AtomicBox<&Cell<RefOrInt<'_>>>` to implement `Send`
+note: required because it's used within this closure
+  --> tests/samples/atomic_box_data_race.rs:20:17
+   |
+20 |         s.spawn(move |_| {
+   |                 ^^^^^^^^
+note: required by a bound in `crossbeam_utils::thread::Scope::<'env>::spawn`
+  --> $CARGO/crossbeam-utils-0.8.15/src/thread.rs
+   |
+   |         F: Send + 'env,
+   |            ^^^^ required by this bound in `Scope::<'env>::spawn`
