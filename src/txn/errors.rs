@@ -2,7 +2,7 @@ use std::result;
 use thiserror::Error;
 
 #[derive(Clone, Error, Debug)]
-pub enum TxnErrorType {
+pub enum TxnError {
     #[error("Retry mechanism triggered")]
     Retry,
     #[error("Abort triggered")]
@@ -13,4 +13,4 @@ pub enum TxnErrorType {
     AbortWithContext(String)
 }
 
-pub type TxnResult<T> = result::Result<T, TxnErrorType>;
+pub type TxnResult<T> = result::Result<T, TxnError>;
