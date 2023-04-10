@@ -330,6 +330,6 @@ impl Memory for BoxMemory {
 
     unsafe fn deallocate<T>(&self, pointer: *mut T) {
         assert!(!pointer.is_null());
-        Box::from_raw(pointer);
+        drop(Box::from_raw(pointer));
     }
 }

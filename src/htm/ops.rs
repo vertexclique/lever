@@ -8,7 +8,7 @@ use super::x86_64 as htm;
 #[cfg(all(target_arch = "aarch64", feature = "hw"))]
 use super::aarch64 as htm;
 
-use crate::txn::errors::{TxnErrorType, TxnResult};
+use crate::txn::errors::{TxnError, TxnResult};
 use crate::txn::transact::TxnManager;
 /// HTM support
 use htm::*;
@@ -77,7 +77,7 @@ impl HwTxn {
                 };
                 debug!("htx::failure::cause::{}", reason);
                 // TODO: htm.abort(&HwTxAbortCode::UserlandAbort);
-                break Err(TxnErrorType::Abort);
+                break Err(TxnError::Abort);
             }
         };
 
