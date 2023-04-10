@@ -35,7 +35,7 @@ use crate::txn::writeset::WriteSet;
 use lazy_static::*;
 use std::any::Any;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 ///
 /// Concurrency control for transaction system
 pub enum TransactionConcurrency {
@@ -47,7 +47,7 @@ pub enum TransactionConcurrency {
     Pessimistic,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 ///
 /// Transaction Isolation levels for transaction system
 pub enum TransactionIsolation {
