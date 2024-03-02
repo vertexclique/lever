@@ -100,7 +100,7 @@ impl<T: Sized> AtomicBox<T> {
     /// given closure to the current value
     pub fn replace_with<F>(&self, f: F)
     where
-        F: Fn(Arc<T>) -> T,
+        F: FnOnce(Arc<T>) -> T,
     {
         let val = self.take();
         let new_val = f(val);
