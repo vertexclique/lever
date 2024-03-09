@@ -107,6 +107,13 @@ impl<T: Sized> AtomicBox<T> {
         let ptr = Arc::into_raw(Arc::new(new_val)) as *mut T;
         self.release(ptr);
     }
+
+    ///
+    /// Atomically replace the inner value with the given one.
+    pub fn replace(&self, new_val: T) {
+        let ptr = Arc::into_raw(Arc::new(new_val)) as *mut T;
+        self.release(ptr);
+    }
 }
 
 impl<T: Sized + PartialEq> PartialEq for AtomicBox<T> {
