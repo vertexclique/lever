@@ -93,7 +93,7 @@ mod lever_hwtxn_test {
 
     pub fn swallow<T>(d: T) -> T {
         unsafe {
-            llvm_asm!("" : : "r"(&d));
+            core::arch::asm!("" : : "r"(&d));
             d
         }
     }
