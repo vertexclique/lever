@@ -12,6 +12,14 @@
 [![Rust Documentation](https://img.shields.io/badge/api-rustdoc-blue.svg)](https://docs.rs/lever/)
 </div>
 
+> [!CAUTION]
+> **⚠️ Lever is Archieved. Please use [Kovan](https://github.com/vertexclique/kovan)!**
+>
+> Lever is now in maintenance mode. It will not receive new features or enhancements and is community managed going forward.
+>
+> New users should start with [Kovan Ecosystem](https://github.com/vertexclique/kovan). I had written so many time MR and primitives for data processing programs that I needed to write a clean version with ecosystem crate approach. Kovan is the final station of that endeavor.
+
+
 Lever is a library for writing transactional systems (esp. for in-memory data). It consists of various parts:
 * `index`: Indexes and lookup structures
 * `stats`: Statistics structures
